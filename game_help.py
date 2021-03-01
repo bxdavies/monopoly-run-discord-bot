@@ -77,7 +77,7 @@ class claHelp(commands.Cog):
     @help.command()
     async def bid(self, ctx):
         emBidHelp = embeds.Embed(title = 'Bid Command Help', description = 'Use &iwts to auction off a property.', color=Colour.orange())
-        emBidHelp.add_field(name= 'Usage:', value='&bid <ammount>')
+        emBidHelp.add_field(name= 'Usage:', value='&bid <amount>')
         emBidHelp.add_field(name= 'Example Usage:', value='&bid 200')
         emBidHelp.add_field(name='⠀', value='⠀', inline=False)
         emBidHelp.add_field(name='Requirements:', value='1. You must have answered the question correctly for property your trying to bid on. \n2. You must be able to afford the bid.')

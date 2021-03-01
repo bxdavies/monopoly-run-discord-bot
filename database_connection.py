@@ -28,5 +28,5 @@ try:
     dbcursor = dbconnection.cursor()
     
 except mariadb.Error as e:
-    logger.critical(f'Unable to connect to Database: {e}')
+    logger.critical(f'CRITICAL Unable to connect to Database: {e}')
     sys.exit(1)

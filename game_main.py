@@ -65,7 +65,7 @@ class claGame(commands.Cog):
             await ctx.send(':tophat: Please enter a valid property! e.g. ```&goto brown1``` For a list of properties see the properties channel!')
             return None
 
-        ## Check if the team needs to asnwer a question ##
+        ## Check if the team needs to answer a question ##
         dbcursor.execute(f"SELECT current_location FROM tbl_{strGuildID} WHERE id = ?", (strTeamName, ))
         lisCurrentLocation = dbcursor.fetchall()
         for item in lisCurrentLocation:
@@ -301,7 +301,7 @@ class claGame(commands.Cog):
         ### Answer is incorrect ###
         elif blnAnswerCorrect == False:
 
-            # Notify the user of the heighest they were correct #
+            # Notify the user of the highest they were correct #
             if intPartialRatio > intTokenSetRatio:
                 await ctx.send(f':negative_squared_cross_mark: Try again! You were {intPartialRatio}% correct!')
             else:
