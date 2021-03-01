@@ -15,6 +15,7 @@ load_dotenv()
 #######################
 # Database Connection #
 #######################
+# Try and Connect to the database if fails exit program #
 try:
     dbconnection = mariadb.connect(
         user=os.getenv("USER"),
@@ -25,6 +26,7 @@ try:
     )
     dbconnection.autocommit = True
     dbcursor = dbconnection.cursor()
+    
 except mariadb.Error as e:
     logger.critical(f'Unable to connect to Database: {e}')
     sys.exit(1)

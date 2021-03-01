@@ -1,10 +1,11 @@
 ##################
 # Import Modules #
 ##################
-from discord.ext import commands
-from discord import utils
+from discord.ext import commands, tasks
+from discord import utils, embeds, Colour
 from database_connection import dbcursor
 from logging_setup import logging
+import re
 
 ###############
 # Setup Class #
@@ -16,6 +17,8 @@ class claSetup(commands.Cog):
     ####################
     def __init__(self, bot):
         self.bot = bot
+        self.UpdatePropertiesChannel = claSetup.UpdatePropertiesChannel
+        self.UpdateLeaderBoard = claSetup.UpdateLeaderBoard
 
     #################
     # Setup Command #
@@ -46,7 +49,7 @@ class claSetup(commands.Cog):
         if not lisQuestionSet:
             await ctx.send(':no_entry: That question set was not found!')
             return None
-        
+
         ## Declare lisTeams based on user input ##
         if intNumberOfTeams <= 4: # Can not create more than 4 teams
             intNumberOfTeams = 4
@@ -76,6 +79,11 @@ class claSetup(commands.Cog):
         chaAnnouncements = await ctx.guild.create_text_channel('announcements', category=catMonopolyRun)
         await chaAnnouncements.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
         await chaAnnouncements.set_permissions(roleMonopolyRun, send_messages=False, read_messages=True)
+
+        ## Create leadboard channel and set permissions ##
+        chaLeaderBoard = await ctx.guild.create_text_channel('leaderboard', category=catMonopolyRun)
+        await chaLeaderBoard.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
+        await chaLeaderBoard.set_permissions(roleMonopolyRun, send_messages=False, read_messages=True)
 
         ## Create properties channel and set permissions ##
         chaProperties = await ctx.guild.create_text_channel('properties', category=catMonopolyRun)
@@ -107,8 +115,6 @@ class claSetup(commands.Cog):
         brown1_visted set('Y','N') NOT NULL DEFAULT 'N',
         brown2_owner set('Y','N') NOT NULL DEFAULT 'N',
         brown2_visted set('Y','N') NOT NULL DEFAULT 'N',
-        station1_owner set('Y','N') NOT NULL DEFAULT 'N',
-        station1_visted set('Y','N') NOT NULL DEFAULT 'N',
         lightblue1_owner set('Y','N') NOT NULL DEFAULT 'N',
         lightblue1_visted set('Y','N') NOT NULL DEFAULT 'N',
         lightblue2_owner set('Y','N') NOT NULL DEFAULT 'N',
@@ -121,8 +127,6 @@ class claSetup(commands.Cog):
         pink2_visted set('Y','N') NOT NULL DEFAULT 'N',
         pink3_owner set('Y','N') NOT NULL DEFAULT 'N',
         pink3_visted set('Y','N') NOT NULL DEFAULT 'N',
-        station2_owner set('Y','N') NOT NULL DEFAULT 'N',
-        station2_visted set('Y','N') NOT NULL DEFAULT 'N',
         orange1_owner set('Y','N') NOT NULL DEFAULT 'N',
         orange1_visted set('Y','N') NOT NULL DEFAULT 'N',
         orange2_owner set('Y','N') NOT NULL DEFAULT 'N',
@@ -135,8 +139,6 @@ class claSetup(commands.Cog):
         red2_visted set('Y','N') NOT NULL DEFAULT 'N',
         red3_owner set('Y','N') NOT NULL DEFAULT 'N',
         red3_visted set('Y','N') NOT NULL DEFAULT 'N',
-        station3_owner set('Y','N') NOT NULL DEFAULT 'N',
-        station3_visted set('Y','N') NOT NULL DEFAULT 'N',
         yellow1_owner set('Y','N') NOT NULL DEFAULT 'N',
         yellow1_visted set('Y','N') NOT NULL DEFAULT 'N',
         yellow2_owner set('Y','N') NOT NULL DEFAULT 'N',
@@ -149,8 +151,6 @@ class claSetup(commands.Cog):
         green2_visted set('Y','N') NOT NULL DEFAULT 'N',
         green3_owner set('Y','N') NOT NULL DEFAULT 'N',
         green3_visted set('Y','N') NOT NULL DEFAULT 'N',
-        station4_owner set('Y','N') NOT NULL DEFAULT 'N',
-        station4_visted set('Y','N') NOT NULL DEFAULT 'N',
         darkblue1_owner set('Y','N') NOT NULL DEFAULT 'N',
         darkblue1_visted set('Y','N') NOT NULL DEFAULT 'N',
         darkblue2_owner set('Y','N') NOT NULL DEFAULT 'N',
@@ -160,7 +160,7 @@ class claSetup(commands.Cog):
         ## Create records in guilds table  ##
         for strTeam in lisTeams:
             dbcursor.execute(f"INSERT INTO tbl_{strGuildID} (id, money, current_location) VALUES (?, ?, ?)", (strTeam, 1500, ''))
-        
+
         ## Create a record in tbl_guild ##
         dbcursor.execute("INSERT INTO tbl_guilds (id, name, questions, teams) VALUES (?, ?, ?, ?)", (intGuildID, strGuildName, strQuestionSet ,intNumberOfTeams))
 
@@ -193,7 +193,7 @@ class claSetup(commands.Cog):
         if blnConfirm == False:
             await ctx.send(':no_entry: Please specify true to confirm! ```e.g. &remove true```')
             return None
-        
+
         ## Declare some key variables ##
         strGuildID = str(ctx.guild.id)
 
@@ -203,7 +203,7 @@ class claSetup(commands.Cog):
         if not lisExists:
             await ctx.send(':no_entry: No database records exist for this guild or server!')
             return None
-   
+
         ## Delete all channels in the category Monopoly Run ##
         for category in ctx.message.guild.categories:
             if "Monopoly Run" in category.name:
@@ -246,6 +246,7 @@ class claSetup(commands.Cog):
     @commands.command()
     @commands.has_guild_permissions(administrator=True)
     async def add(self, ctx):
+
         ## Declare some key variables ##
         strGuildID = str(ctx.guild.id)
 
@@ -255,7 +256,7 @@ class claSetup(commands.Cog):
         if not lisNumberOfTeams:
             await ctx.send(':no_entry: No database records exist for this guild or server!')
             return None
-        
+
         ## Get the number of teams the guild currently has ##
         tupNumberOfTeams = lisNumberOfTeams[0]
         intNumberOfTeams = tupNumberOfTeams[0]
@@ -265,12 +266,13 @@ class claSetup(commands.Cog):
         if intUpdatedNumberOfTeams + 1 == 10:
             await ctx.send(':no_entry: Max number of teams is 9!')
             return None
-        
+
         ## Get the Monopoly Run Category ##
         for category in ctx.guild.categories:
             if "Monopoly Run" in category.name:
                 catMonopolyRun = category
 
+        ## Declare a list of teams ##
         lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8', 'team9']
 
         ## Create team Role ##
@@ -283,7 +285,7 @@ class claSetup(commands.Cog):
 
         ## Add team record to guilds table ##
         dbcursor.execute(f"INSERT INTO tbl_{strGuildID} (id, money, current_location) VALUES (?, ?, ?)", (lisTeams[intUpdatedNumberOfTeams], 1500, ''))
-        
+
         ## Update number of teams in guild table ##
         dbcursor.execute(f"UPDATE tbl_guilds SET teams = ? WHERE id = ?", (intUpdatedNumberOfTeams + 1, strGuildID))
 
@@ -299,12 +301,13 @@ class claSetup(commands.Cog):
     ######################
     # Start Game Command #
     ######################
-    
+
     # Command Handling #
     @commands.command()
     @commands.has_guild_permissions(administrator=True)
     async def start(self, ctx):
-        # Declare some key variables ##
+
+        ## Declare some key variables ##
         strGuildID = str(ctx.guild.id)
         catMonopolyRun = utils.get(ctx.guild.categories, name="Monopoly Run")
 
@@ -314,11 +317,16 @@ class claSetup(commands.Cog):
         if not lisNumberOfTeams:
             await ctx.send(':no_entry: No database records exist for this guild or server!')
             return None
-        
+
+        ## Start UpdatePropertiesChannel Loop and UpdateLeaderBoard Loop ##
+        self.UpdatePropertiesChannel.start(self, ctx)
+        self.UpdateLeaderBoard.start(self, ctx)
+
         ## Get the number of teams the guild currently has ##
         tupNumberOfTeams = lisNumberOfTeams[0]
         intNumberOfTeams = tupNumberOfTeams[0]
 
+        ## Create a list of teams depending on how many teams the guild currently has ##
         if intNumberOfTeams <= 4: # Can not create more than 4 teams
             intNumberOfTeams = 4
             lisTeams = ['team1', 'team2', 'team3', 'team4']
@@ -334,6 +342,7 @@ class claSetup(commands.Cog):
             intNumberOfTeams = 9
             lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8', 'team9']
 
+        ## Update send permssions on team channels ##
         for strTeam in lisTeams:
             rolTeam = utils.get(ctx.guild.roles, name=f"{strTeam}")
             chaTeam = utils.get(ctx.guild.channels, name=f"{strTeam}")
@@ -344,10 +353,10 @@ class claSetup(commands.Cog):
         chaAuctionChannel = utils.get(ctx.guild.channels, name="auction", category_id=catMonopolyRun.id)
         await chaAuctionChannel.set_permissions(roleMonopolyRun, send_messages=True, view_channel=True)
 
-        ## Get and Set Announcement Channel ##
+        ## Get Announcement Channel and send a message ##
         chaAnnouncementChannel = utils.get(ctx.guild.channels, name="announcements", category_id=catMonopolyRun.id)
-        await chaAnnouncementChannel.send(f'Game Start!')
-    
+        await chaAnnouncementChannel.send('Game Start!')
+
     # Error Handling #
     @start.error
     async def start_error(self, ctx, error):
@@ -365,7 +374,8 @@ class claSetup(commands.Cog):
     @commands.command()
     @commands.has_guild_permissions(administrator=True)
     async def end(self, ctx):
-        # Declare some key variables ##
+
+        ## Declare some key variables ##
         strGuildID = str(ctx.guild.id)
         catMonopolyRun = utils.get(ctx.guild.categories, name="Monopoly Run")
 
@@ -375,11 +385,15 @@ class claSetup(commands.Cog):
         if not lisNumberOfTeams:
             await ctx.send(':no_entry: No database records exist for this guild or server!')
             return None
-        
+
+        claSetup.UpdatePropertiesChannel.stop()
+        claSetup.UpdateLeaderBoard.stop()
+
         ## Get the number of teams the guild currently has ##
         tupNumberOfTeams = lisNumberOfTeams[0]
         intNumberOfTeams = tupNumberOfTeams[0]
 
+        ## Create a list of teams depending on how many teams the guild currently has ##
         if intNumberOfTeams <= 4: # Can not create more than 4 teams
             intNumberOfTeams = 4
             lisTeams = ['team1', 'team2', 'team3', 'team4']
@@ -395,6 +409,7 @@ class claSetup(commands.Cog):
             intNumberOfTeams = 9
             lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8', 'team9']
 
+        ## Update send permssions on team channels ##
         for strTeam in lisTeams:
             rolTeam = utils.get(ctx.guild.roles, name=f"{strTeam}")
             chaTeam = utils.get(ctx.guild.channels, name=f"{strTeam}")
@@ -405,10 +420,8 @@ class claSetup(commands.Cog):
         chaAuctionChannel = utils.get(ctx.guild.channels, name="auction", category_id=catMonopolyRun.id)
         await chaAuctionChannel.set_permissions(roleMonopolyRun, send_messages=False)
 
-        ## Get and Set Announcement Channel ##
+        ## Get Announcement Channel and send a message ##
         chaAnnouncementChannel = utils.get(ctx.guild.channels, name="announcements", category_id=catMonopolyRun.id)
-
-        chaAnnouncementChannel = utils.get(ctx.guild.channels, name="announcements", category_id=catMonopolyRun.id) 
         await chaAnnouncementChannel.send(f'Game Over!')
 
     # Error Handling #
@@ -419,3 +432,107 @@ class claSetup(commands.Cog):
         else:
             logging.error(f'Unexpected error: {error}')
             await ctx.send(f':satellite: An unexpected error occurred! ```The error is: {error}``` ')
+
+    #############################
+    # Update Properties Channel #
+    #############################
+    @tasks.loop(minutes=2.5, count=None)
+    async def UpdatePropertiesChannel(self, ctx):
+
+        # Declare some key variables ##
+        strGuildID = str(ctx.guild.id)
+
+        ## Get which set of Questions the guild is using ##
+        dbcursor.execute("SELECT questions FROM tbl_guilds WHERE id = ?", (strGuildID, ))
+        lisQuestions = dbcursor.fetchall()
+        tupQuestions = lisQuestions[0]
+        strQuestions = tupQuestions[0]
+
+        ## Create Embeds ##
+        emBrownProperties = embeds.Embed(title = 'Brown Properties', color=Colour.from_rgb(139, 69, 19))
+        emLightBlueProperties = embeds.Embed(title = 'Light Blue Properties', color=Colour.from_rgb(135, 206, 235))
+        emPinkProperties = embeds.Embed(title = 'Pink Properties', color=Colour.from_rgb(218, 112, 214))
+        emOrangeProperties = embeds.Embed(title = 'Orange Properties', color=Colour.from_rgb(255, 165, 0))
+        emRedProperties = embeds.Embed(title = 'Red Properties', color=Colour.from_rgb(255, 0, 0))
+        emYellowProperties = embeds.Embed(title = 'Yellow Properties', color=Colour.from_rgb(255, 255, 0))
+        emGreenProperties = embeds.Embed(title = 'Green Properties', color=Colour.from_rgb(0, 179, 0))
+        emDarkBlueProperties = embeds.Embed(title = 'Dark Blue Properties', color=Colour.from_rgb(0, 0, 255))
+
+        ## Get id, value and location from datbase and add to the relvenat embeds ##
+        dbcursor.execute(f"SELECT id, value, location FROM tbl_{strQuestions}")
+        lisProperties = dbcursor.fetchall()
+        for item in lisProperties:
+
+            ## Get owener if any ##
+            dbcursor.execute(f"SELECT id FROM tbl_{strGuildID} WHERE {item[0]}_owner = 'Y'")
+            lisOwner = dbcursor.fetchall()
+            if not lisOwner:
+                strOwner = None
+            else:
+                tupOwner = lisOwner[0]
+                strOwner = tupOwner[0]
+
+            ## Add fields to Embed ##
+            if re.sub('[0-9]+', '', item[0]) == "brown":
+                emBrownProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}")
+            elif re.sub('[0-9]+', '', item[0]) == "lightblue":
+                emLightBlueProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]}  \n Owner: {strOwner}")
+            elif re.sub('[0-9]+', '', item[0]) == "pink":
+                emPinkProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}")
+            elif re.sub('[0-9]+', '', item[0]) == "orange":
+                emOrangeProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}")
+            elif re.sub('[0-9]+', '', item[0]) == "red":
+                emRedProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}")
+            elif re.sub('[0-9]+', '', item[0]) == "yellow":
+                emYellowProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}")
+            elif re.sub('[0-9]+', '', item[0]) == "green":
+                emGreenProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}")
+            elif re.sub('[0-9]+', '', item[0]) == "darkblue":
+                emDarkBlueProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}")
+
+        ## Get the properties channel ##
+        catMonopolyRun = utils.get(ctx.guild.categories, name="Monopoly Run")
+        chaProperties = utils.get(ctx.guild.channels, name="properties", category_id=catMonopolyRun.id)
+
+        ## Remove last message ##
+        await chaProperties.purge(limit=10)
+
+        ## Send the embeds ##
+        await chaProperties.send(embed = emBrownProperties)
+        await chaProperties.send(embed = emLightBlueProperties)
+        await chaProperties.send(embed = emPinkProperties)
+        await chaProperties.send(embed = emOrangeProperties)
+        await chaProperties.send(embed = emRedProperties)
+        await chaProperties.send(embed = emYellowProperties)
+        await chaProperties.send(embed = emGreenProperties)
+        await chaProperties.send(embed = emDarkBlueProperties)
+
+    #######################
+    # Update Leader Board #
+    #######################
+    @tasks.loop(minutes=5, count=None)
+    async def UpdateLeaderBoard(self, ctx):
+
+        ## Declare some key variables ##
+        strGuildID = str(ctx.guild.id)
+
+        ## Get teams and there money ordered highest to lowest ##
+        dbcursor.execute(f"SELECT id, money FROM tbl_{strGuildID} ORDER BY money DESC")
+        lisLeaderBoard = dbcursor.fetchall()
+        emLeaderBoard = embeds.Embed(title = 'Leaderboard!', color=Colour.orange())
+        i = 1
+        for item in lisLeaderBoard:
+
+            # Add to embed #
+            emLeaderBoard.add_field(name=f"{i}. {item[0]}", value=f"Money: {item[1]}", inline=False)
+            i = i + 1
+
+        ## Get the properties channel ##
+        catMonopolyRun = utils.get(ctx.guild.categories, name="Monopoly Run")
+        chaLeaderBoard = utils.get(ctx.guild.channels, name="leaderboard", category_id=catMonopolyRun.id)
+
+        ## Remove last message ##
+        await chaLeaderBoard.purge(limit=2)
+
+        ## Send the embed ##
+        await chaLeaderBoard.send(embed = emLeaderBoard)

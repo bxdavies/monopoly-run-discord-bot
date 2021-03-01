@@ -76,7 +76,7 @@ class claAuction (commands.Cog):
             return None
 
         ## Check if an auction is already in progress ##
-        dbcursor.execute("SELECT guild FROM tbl_auctions WHERE guild = ?", (strGuildID, )) 
+        dbcursor.execute("SELECT guild FROM tbl_auctions WHERE guild = ?", (strGuildID, ))
         lisGuild = dbcursor.fetchall()
         if lisGuild:
             await ctx.send(':tophat: An auction is already in progress!')
@@ -88,27 +88,26 @@ class claAuction (commands.Cog):
         tupOwner = lisOwner[0]
         strOwner = tupOwner[0]
         if strOwner != "Y":
-            await ctx.send(':tophat: You do not own that property so can not sell it!') 
+            await ctx.send(':tophat: You do not own that property so can not sell it!')
             return None
 
         ## Calculate end time ##
         dtAuctionStartTime = datetime.datetime.now()
-        dtAuctionEndTime = dtAuctionStartTime + datetime.timedelta(minutes=1) 
+        dtAuctionEndTime = dtAuctionStartTime + datetime.timedelta(minutes=2)
 
         ## Create record in database ##
         dbcursor.execute("INSERT INTO tbl_auctions (guild, property, bid, end_time) VALUES (?, ?, ?, ?)", (strGuildID, strProperty, intStartingPrice, dtAuctionEndTime))
 
-        ## Get and Set Announcement &  Auction Channel ##
+        ## Get and Set Announcement & Auction Channel ##
         catMonopolyRun = utils.get(ctx.guild.categories, name="Monopoly Run")
         chaAnnouncementChannel = utils.get(ctx.guild.channels, name="announcements", category_id=catMonopolyRun.id)
         chaAuctionChannel = utils.get(ctx.guild.channels, name="auction", category_id=catMonopolyRun.id)
 
         ## Send Messages ##
-        await chaAnnouncementChannel.send(f':dollar: Auction for: {strProperty} with a starting price of £{intStartingPrice} starting in #auction NOW!')
-        await chaAuctionChannel.send(f'Auction for: {strProperty} with a starting price of £{intStartingPrice} Lasting for 2 minutes')
+        await chaAnnouncementChannel.send(f':man_judge: Auction for: {strProperty} with a starting price of £{intStartingPrice} starting in #auction NOW!')
+        await chaAuctionChannel.send(f':man_judge: Auction for: {strProperty} with a starting price of £{intStartingPrice} Lasting for 2 minutes!')
 
         ## Start 2 minute loop ##
-        
         self.AcutionLoop.start(ctx, strProperty, dtAuctionEndTime, strGuildID, chaAuctionChannel)
 
     # Error Handling #
@@ -123,8 +122,9 @@ class claAuction (commands.Cog):
         elif isinstance(error, commands.BadArgument):
             await ctx.send(':no_entry: Please enter a valid starting price!')
         else:
-            await ctx.send(f':satellite: An unexpected error occurred! The error is: ```{error}``` ')
-    
+            logging.error(f'Unexpected error: {error}')
+            await ctx.send(f':satellite: An unexpected error occurred! ```The error is: {error}``` ')
+
     ###############
     # Bid command #
     ###############
@@ -134,32 +134,32 @@ class claAuction (commands.Cog):
     @commands.check(funAuctionChannel)
     @commands.has_any_role("team1", "team2", "team3", "team4", "team5", "team6", "team7", "team8", "team9")
     async def bid(self, ctx, intBidAmount: int):
-        
-        # Define some key variables 
+
+        ## Define some key variables ##
         strTeamName = str(ctx.author.roles[1])
         strGuildID = str(ctx.guild.id)
 
-        # Check if price is Valid
+        ## Check if price is Valid ##
         if intBidAmount < 1 or intBidAmount > 10000:
             await ctx.send(':tophat: Please enter a valid price between £1 and £1000!')
             return None
 
-        # Get property, bid and end time from the database
+        ## Get property, bid and end time from the database
         dbcursor.execute("SELECT property, bid, end_time FROM tbl_auctions WHERE guild = ?", (strGuildID, ))
         lisAuctionInfo = dbcursor.fetchall()
 
-        # Check if Auction is in Progress
+        ## Check if Auction is in Progress ##
         if not lisAuctionInfo:
             await ctx.send(':tophat: Action has either finished or is not running!')
             return None
 
-        # Set variables 
+        ## Set variables ##
         for item in lisAuctionInfo:
             strPropertyinAuction = item[0]
             intHighestBid = int(item[1])
             dtAuctionEndTime = item[2]
 
-        # Check if team has the answer right
+        ## Check if team has the answer right ##
         dbcursor.execute(f"SELECT {strPropertyinAuction}_visted FROM tbl_{strGuildID} WHERE id = ?", (strTeamName, ))
         lisAnswered = dbcursor.fetchall()
         tupAnswered = lisAnswered[0]
@@ -168,26 +168,26 @@ class claAuction (commands.Cog):
             await ctx.send(':tophat: You have not answered the question correctly!')
             return None
 
-        # Check if team can Afford
+        ## Check if team can Afford ##
         dbcursor.execute(f"SELECT money FROM tbl_{strGuildID} WHERE id = ?", (strTeamName, ))
         lisMoney = dbcursor.fetchall()
         tupMoney = lisMoney[0]
         intMoney = int(tupMoney[0])
-        
+
         if intMoney < intBidAmount:
             await ctx.send(':tophat: You can not afford to bid that much!')
             return None
-        
-        # Check if Bid is greater than the Highest Bidder
+
+        ## Check if Bid is greater than the Highest Bidder ##
         if intBidAmount < intHighestBid:
             await ctx.send(':tophat: You must bid higher than highest bid or starting price!')
             return None
 
-        # Assuming everything is correct so updating variables
+        ## Assuming everything is correct so updating database ##
         dbcursor.execute("UPDATE tbl_auctions SET bidder = ?, bid = ?  WHERE guild = ?", (strTeamName, intBidAmount, strGuildID))
-        await ctx.send(f':dollar: Current Bid is: £{intBidAmount} From: {strTeamName}')
+        await ctx.send(f':man_judge: Current Bid is: £{intBidAmount} From: {strTeamName}')
 
-    # Error Handling
+    # Error Handling #
     @bid.error
     async def bid_error(self, ctx, error):
         if isinstance(error, commands.MissingAnyRole):
@@ -199,49 +199,61 @@ class claAuction (commands.Cog):
         elif isinstance(error, commands.BadArgument):
             await ctx.send(':no_entry: Please enter a valid bid amount!')
         else:
-            await ctx.send(f':satellite: An unexpected error occurred! The error is: ```{error}``` ')
-    
+            logging.error(f'Unexpected error: {error}')
+            await ctx.send(f':satellite: An unexpected error occurred! ```The error is: {error}``` ')
+
     ################
     # Auction Loop #
     ################
-    @tasks.loop(seconds=1.0, count=70)
+    @tasks.loop(seconds=1.0, count=130)
     async def AcutionLoop(ctx, strProperty, dtAuctionEndTime, strGuildID, chaAuctionChannel):
+
+        ## If time now is equal to the auctions end time updae the database ##
         if datetime.datetime.now().strftime('%H:%M:%S') == dtAuctionEndTime.strftime('%H:%M:%S'):
 
+            ## Get current bidder and bid from auctions table ##
             dbcursor.execute("SELECT bidder, bid  FROM tbl_auctions WHERE guild = ?", (strGuildID, ))
             lisBidderBid = dbcursor.fetchall()
             for item in lisBidderBid:
                 strBidder = item[0]
                 intBidAmount = int(item[1])
-            # Update Money Code
+
+            ## No Sale ##
             if strBidder == None:
-                await chaAuctionChannel.send(f'Auction has finished with no sale!')
+                await chaAuctionChannel.send(f':man_judge: Auction has finished with no sale!')
+
+            ## Sale ##
             elif strBidder != None:
+
                 # Get current owner
                 dbcursor.execute(f"SELECT id FROM tbl_{strGuildID} WHERE {strProperty}_owner = 'y'")
                 lisOwner = dbcursor.fetchall()
                 tupOwner = lisOwner[0]
                 strOwner = tupOwner[0]
 
-                # Remove owner 
+                # Remove owner
                 dbcursor.execute(f"UPDATE tbl_{strGuildID} SET {strProperty}_owner = 'N' WHERE id = ?", (strOwner, ))
-                
+
                 # Set owner to auction winner
                 dbcursor.execute(f"UPDATE tbl_{strGuildID} SET {strProperty}_owner = 'Y' WHERE id = ?", (strBidder, ))
-                
+
                 # Take bid away from teams money
                 dbcursor.execute(f"SELECT money FROM tbl_{strGuildID} WHERE id = ?", (strBidder, ))
                 lisMoney = dbcursor.fetchall()
                 tupMoney = lisMoney[0]
                 intMoney = int(tupMoney[0])
                 intUpdatedMoney = intMoney - intBidAmount
-                
+
                 dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strBidder))
-                
+
                 # Let users know result
-                await chaAuctionChannel.send(f':dollar: Auction has finished so: {strProperty} is sold to: {strBidder}')
+                await chaAuctionChannel.send(f':man_judge: Auction has finished so: {strProperty} is sold to: {strBidder}')
+
+            ## Error ##
             else:
-                print("ERORR")
+                logging.error(f'Unexpected error: Something went wrong with the auction!')
+                await ctx.send(f':satellite: An unexpected error occurred! ```The error is: Something went wrong with the auction!``` ')
+
             # Delete record from auction table
             dbcursor.execute("DELETE FROM tbl_auctions WHERE guild = ?", (strGuildID, ))
             claAuction.AcutionLoop.stop()
