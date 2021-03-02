@@ -80,7 +80,7 @@ class claSetup(commands.Cog):
         await chaAnnouncements.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
         await chaAnnouncements.set_permissions(roleMonopolyRun, send_messages=False, read_messages=True)
 
-        ## Create leadboard channel and set permissions ##
+        ## Create leaderboard channel and set permissions ##
         chaLeaderBoard = await ctx.guild.create_text_channel('leaderboard', category=catMonopolyRun)
         await chaLeaderBoard.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
         await chaLeaderBoard.set_permissions(roleMonopolyRun, send_messages=False, read_messages=True)
@@ -342,7 +342,7 @@ class claSetup(commands.Cog):
             intNumberOfTeams = 9
             lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8', 'team9']
 
-        ## Update send permssions on team channels ##
+        ## Update send permissions on team channels ##
         for strTeam in lisTeams:
             rolTeam = utils.get(ctx.guild.roles, name=f"{strTeam}")
             chaTeam = utils.get(ctx.guild.channels, name=f"{strTeam}")
@@ -388,7 +388,7 @@ class claSetup(commands.Cog):
 
         claSetup.UpdatePropertiesChannel.stop()
         claSetup.UpdateLeaderBoard.stop()
-
+        
         ## Get the number of teams the guild currently has ##
         tupNumberOfTeams = lisNumberOfTeams[0]
         intNumberOfTeams = tupNumberOfTeams[0]
@@ -409,7 +409,7 @@ class claSetup(commands.Cog):
             intNumberOfTeams = 9
             lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8', 'team9']
 
-        ## Update send permssions on team channels ##
+        ## Update send permissions on team channels ##
         for strTeam in lisTeams:
             rolTeam = utils.get(ctx.guild.roles, name=f"{strTeam}")
             chaTeam = utils.get(ctx.guild.channels, name=f"{strTeam}")
@@ -458,12 +458,12 @@ class claSetup(commands.Cog):
         emGreenProperties = embeds.Embed(title = 'Green Properties', color=Colour.from_rgb(0, 179, 0))
         emDarkBlueProperties = embeds.Embed(title = 'Dark Blue Properties', color=Colour.from_rgb(0, 0, 255))
 
-        ## Get id, value and location from datbase and add to the relvenat embeds ##
+        ## Get id, value and location from database and add to the relevant embeds ##
         dbcursor.execute(f"SELECT id, value, location FROM tbl_{strQuestions}")
         lisProperties = dbcursor.fetchall()
         for item in lisProperties:
 
-            ## Get owener if any ##
+            ## Get owner if any ##
             dbcursor.execute(f"SELECT id FROM tbl_{strGuildID} WHERE {item[0]}_owner = 'Y'")
             lisOwner = dbcursor.fetchall()
             if not lisOwner:

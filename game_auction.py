@@ -6,6 +6,7 @@ from discord import utils
 from database_connection import dbcursor
 from logging_setup import logging
 import datetime
+import asyncio
 
 #################
 # Auction Class #
@@ -248,6 +249,8 @@ class claAuction (commands.Cog):
 
                 # Let users know result
                 await chaAuctionChannel.send(f':man_judge: Auction has finished so: {strProperty} is sold to: {strBidder}')
+                await asyncio.sleep(10)
+                await chaAuctionChannel.purge()
 
             ## Error ##
             else:

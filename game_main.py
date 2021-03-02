@@ -65,14 +65,6 @@ class claGame(commands.Cog):
             await ctx.send(':tophat: Please enter a valid property! e.g. ```&goto brown1``` For a list of properties see the properties channel!')
             return None
 
-        ## Check if the team needs to answer a question ##
-        dbcursor.execute(f"SELECT current_location FROM tbl_{strGuildID} WHERE id = ?", (strTeamName, ))
-        lisCurrentLocation = dbcursor.fetchall()
-        for item in lisCurrentLocation:
-            if item[0] != "":
-                await ctx.send(f':tophat: You need to attempt the question at: {item[0]}, first!')
-                return None
-
         ## Get money and visited from the database ##
         dbcursor.execute(f"SELECT money, {strProperty}_visted FROM tbl_{strGuildID} WHERE id = ?",  (strTeamName ,))
         lisMoneyVisted = dbcursor.fetchall()
@@ -146,9 +138,6 @@ class claGame(commands.Cog):
                 await ctx.send(f':tophat: You need to attempt the question at: {strCurrentLocation}, first!')
                 return None
 
-        ## Update the current square to empty ##
-        dbcursor.execute(f"UPDATE tbl_{strGuildID} SET current_location = ? WHERE id = ?", ("", strTeamName))
-
         ## Set property to location ##
         strProperty = strCurrentLocation
 
@@ -159,6 +148,11 @@ class claGame(commands.Cog):
             intTeamsMoney = item[0]
             strVisted = item[1]
 
+        ## Check if the team has already visited that property ##
+        if strVisted == 'Y':
+            await ctx.send(':tophat: You have already answered the question for that property correctly!')
+            return None
+
         ## Check if a team owns the property ##
         dbcursor.execute(f"SELECT id FROM tbl_{strGuildID} WHERE {strProperty}_owner = 'Y'")
         lisOwner = dbcursor.fetchall()
@@ -167,6 +161,7 @@ class claGame(commands.Cog):
         else:
             tupOwner = lisOwner[0]
             strOwner = tupOwner[0]
+                
 
         ## Get which set of Questions the guild is using ##
         dbcursor.execute("SELECT questions FROM tbl_guilds WHERE id = ?", (strGuildID, ))
@@ -199,15 +194,9 @@ class claGame(commands.Cog):
                 blnDoubleRent = False
             else:
                 blnDoubleRent = True
-        elif intNumberofPropertiesToSelect == 4:
-            dbcursor.execute(f"SELECT id FROM tbl_{strGuildID} WHERE {lisPropertiesToSelect[0]}_owner = 'Y' and {lisPropertiesToSelect[1]}_owner = 'Y' and {lisPropertiesToSelect[2]}_owner = 'Y' and {lisPropertiesToSelect[3]}_owner = 'Y'", ())
-            lisPropertiesInSet = dbcursor.fetchall()
-            if not lisPropertiesInSet:
-                blnDoubleRent = False
-            else:
-                blnDoubleRent = True
         else:
             blnDoubleRent = False
+
         ## Check if answer is correct ##
         lisCorrectAnswers = strCorrectAnswers.split('-')
         for item in lisCorrectAnswers:
@@ -340,7 +329,7 @@ class claGame(commands.Cog):
         strTeamName = str(utils.find(lambda i: i.name in self.lisTeamRoles, ctx.author.roles))
 
         ## Check if property exits ##
-        if strProperty not in self.lisProperties and strProperty not in self.lisSpecialProperties:
+        if strProperty not in self.lisProperties:
             await ctx.send(':tophat: Please enter a valid property! e.g. ```&own brown1``` For a list of properties see the properties channel!')
             return None
 
@@ -367,10 +356,6 @@ class claGame(commands.Cog):
             await ctx.send(':tophat: You have not answered the question for that property correctly. Please answer the question correctly and try again!')
             return None
 
-        ## Check if team can afford ##
-        if intTeamsMoney - intValue < 0:
-            await ctx.send(':tophat: You can not afford that property!')
-            return None
         ## Get which set of Questions the guild is using ##
         dbcursor.execute("SELECT questions FROM tbl_guilds WHERE id = ?", (strGuildID, ))
         lisQuestions = dbcursor.fetchall()
@@ -382,6 +367,11 @@ class claGame(commands.Cog):
         lisValue = dbcursor.fetchall()
         tupValue = lisValue[0]
         intValue = int(tupValue[0])
+
+        ## Check if team can afford ##
+        if intTeamsMoney - intValue < 0:
+            await ctx.send(':tophat: You can not afford that property!')
+            return None
 
         ## Get and Set Announcement Channel ##
         catMonopolyRun = utils.get(ctx.guild.categories, name="Monopoly Run")
