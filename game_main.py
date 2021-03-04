@@ -254,8 +254,7 @@ class claGame(commands.Cog):
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET {strProperty}_visted = 'Y' WHERE id = ?", (strTeamName, ))
 
             # Update teams money #
-            intUpdatedMoney = intTeamsMoney - (intValue * 2)
-            intUpdatedMoney = intUpdatedMoney + (intValue / 2)
+            intUpdatedMoney = intTeamsMoney + (intValue * 2)
             strValue = str(intValue * 2)
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strTeamName))
 
@@ -273,7 +272,7 @@ class claGame(commands.Cog):
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET {strProperty}_visted = 'Y' WHERE id = ?", (strTeamName, ))
 
             # Update teams money
-            intUpdatedMoney = intTeamsMoney - (intValue / 2)
+            intUpdatedMoney = intTeamsMoney + intValue 
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strTeamName))
 
             # Update owners money
@@ -289,6 +288,11 @@ class claGame(commands.Cog):
 
         ### Answer is incorrect ###
         elif blnAnswerCorrect == False:
+             # Update owners money
+            chaOwner = utils.get(ctx.guild.channels, name=strOwner)
+            await chaOwner.send(f'{strTeamName} just paid £{intValue} on {strProperty}, even though they got the answer incorrect!')
+            intUpdatedMoney = intTeamsMoney + intValue 
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strTeamName))
 
             # Notify the user of the highest they were correct #
             if intPartialRatio > intTokenSetRatio:
