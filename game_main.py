@@ -254,13 +254,13 @@ class claGame(commands.Cog):
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET {strProperty}_visted = 'Y' WHERE id = ?", (strTeamName, ))
 
             # Update teams money #
-            intUpdatedMoney = intTeamsMoney + (intValue * 2)
-            strValue = str(intValue * 2)
+            intUpdatedMoney = intTeamsMoney + intValue 
+            strValue = str(intValue * 2) #Do I need this line?
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strTeamName))
 
             # Update owners money #
             chaOwner = utils.get(ctx.guild.channels, name=strOwner)
-            await chaOwner.send(f'{strTeamName} just paid £{intValue * 2} on {strProperty}!')
+            await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue * 2} on {strProperty}!')
             intUpdatedMoney = intTeamsMoney + (intValue * 2)
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strOwner))
             await ctx.send(f':white_check_mark: However since: {strOwner} already owns that property and the other properties in the same group you paid: £{strValue} in rent!')
@@ -271,13 +271,13 @@ class claGame(commands.Cog):
             # Update property visited in database #
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET {strProperty}_visted = 'Y' WHERE id = ?", (strTeamName, ))
 
-            # Update teams money
+            # Update teams money #
             intUpdatedMoney = intTeamsMoney + intValue 
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strTeamName))
 
-            # Update owners money
+            # Update owners money #
             chaOwner = utils.get(ctx.guild.channels, name=strOwner)
-            await chaOwner.send(f'{strTeamName} just paid £{intValue} on {strProperty}!')
+            await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue} on {strProperty}!')
             intUpdatedMoney = intTeamsMoney + intValue
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strOwner))
             await ctx.send(f':white_check_mark: However since: {strOwner} already owns that property you paid: £{strValue} in rent!')
@@ -286,12 +286,28 @@ class claGame(commands.Cog):
         elif blnAfford == False:
             await ctx.send(':tophat: Answer is correct however you can not afford the rent on that property!')
 
-        ### Answer is incorrect ###
-        elif blnAnswerCorrect == False:
-             # Update owners money
+        ### Answer is incorrect no Double Rent ###
+        elif blnAnswerCorrect == False and blnDoubleRent == False:
+
+            # Update owners money #
             chaOwner = utils.get(ctx.guild.channels, name=strOwner)
-            await chaOwner.send(f'{strTeamName} just paid £{intValue} on {strProperty}, even though they got the answer incorrect!')
+            await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue} on {strProperty}, even though they got the answer incorrect!')
             intUpdatedMoney = intTeamsMoney + intValue 
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strTeamName))
+
+            # Notify the user of the highest they were correct #
+            if intPartialRatio > intTokenSetRatio:
+                await ctx.send(f':negative_squared_cross_mark: Try again! You were {intPartialRatio}% correct!')
+            else:
+                await ctx.send(f':negative_squared_cross_mark: Try again! You were {intTokenSetRatio}% correct!')
+
+        ### Answer is incorrect and Double Rent ###
+        elif blnAnswerCorrect == False and blnDoubleRent == True:
+
+            # Update owners money
+            chaOwner = utils.get(ctx.guild.channels, name=strOwner)
+            await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue*2} on {strProperty}, even though they got the answer incorrect!')
+            intUpdatedMoney = intTeamsMoney + (intValue * 2)
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strTeamName))
 
             # Notify the user of the highest they were correct #
@@ -337,7 +353,7 @@ class claGame(commands.Cog):
             await ctx.send(':tophat: Please enter a valid property! e.g. ```&own brown1``` For a list of properties see the properties channel!')
             return None
 
-        # Check if a team owns the property ##
+        ## Check if a team owns the property ##
         dbcursor.execute(f"SELECT id FROM tbl_{strGuildID} WHERE {strProperty}_owner = 'Y'")
         lisOwner = dbcursor.fetchall()
         if not lisOwner:
