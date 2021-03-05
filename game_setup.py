@@ -436,7 +436,7 @@ class claSetup(commands.Cog):
     #############################
     # Update Properties Channel #
     #############################
-    @tasks.loop(minutes=2.5, count=None)
+    @tasks.loop(minutes=2, count=None)
     async def UpdatePropertiesChannel(self, ctx):
 
         # Declare some key variables ##
@@ -510,7 +510,7 @@ class claSetup(commands.Cog):
     #######################
     # Update Leader Board #
     #######################
-    @tasks.loop(minutes=5, count=None)
+    @tasks.loop(minutes=2.1, count=None)
     async def UpdateLeaderBoard(self, ctx):
 
         ## Declare some key variables ##

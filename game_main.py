@@ -245,7 +245,7 @@ class claGame(commands.Cog):
             # Update teams money
             intUpdatedMoney = intTeamsMoney + intValue
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strTeamName))
-            await ctx.send(':white_check_mark: This property is also available to buy!')
+            await ctx.send(':white_check_mark: This property is also available to own!')
 
         ### Answer is correct and property is owned and owner has a group of properties so pay double rent ###
         elif blnAnswerCorrect == True and blnAfford == True and blnDoubleRent == True:
@@ -255,7 +255,6 @@ class claGame(commands.Cog):
 
             # Update teams money #
             intUpdatedMoney = intTeamsMoney + intValue 
-            strValue = str(intValue * 2) #Do I need this line?
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strTeamName))
 
             # Update owners money #
@@ -263,7 +262,7 @@ class claGame(commands.Cog):
             await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue * 2} on {strProperty}!')
             intUpdatedMoney = intTeamsMoney + (intValue * 2)
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strOwner))
-            await ctx.send(f':white_check_mark: However since: {strOwner} already owns that property and the other properties in the same group you paid: £{strValue} in rent!')
+            await ctx.send(f':white_check_mark: However since: {strOwner} already owns that property and the other properties in the same group you paid: £{intValue*2} in rent!')
 
         ### Answer is correct and property is owned so pay rent ###
         elif blnAnswerCorrect == True and blnAfford == True:
