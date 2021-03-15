@@ -33,6 +33,16 @@ class claGame(commands.Cog):
     def funToLower(strString):
         return strString.lower()
 
+    ############
+    # Fuctions #
+    ############
+
+    ## Return the highest number ##
+    def funHighestNumber(intNumber1, intNumber2):
+        if intNumber1 > intNumber2:
+            return intNumber1
+        else:
+            return intNumber2
     ##################
     # Command Checks #
     ##################
@@ -66,7 +76,7 @@ class claGame(commands.Cog):
             return None
 
         ## Get money and visited from the database ##
-        dbcursor.execute(f"SELECT money, {strProperty}_visted FROM tbl_{strGuildID} WHERE id = ?",  (strTeamName ,))
+        dbcursor.execute(f"SELECT money, {strProperty}_visted FROM tbl_{strGuildID} WHERE id = '{strTeamName}'")
         lisMoneyVisted = dbcursor.fetchall()
         for item in lisMoneyVisted:
             intTeamsMoney = item[0]
@@ -78,20 +88,20 @@ class claGame(commands.Cog):
             return None
 
         ## Get which set of Questions the guild is using ##
-        dbcursor.execute("SELECT questions FROM tbl_guilds WHERE id = ?", (strGuildID, ))
+        dbcursor.execute(f"SELECT questions FROM tbl_guilds WHERE id = '{strGuildID}'")
         lisQuestions = dbcursor.fetchall()
         tupQuestions = lisQuestions[0]
         strQuestions = tupQuestions[0]
 
         # Get Location and Question from the Database #
-        dbcursor.execute(f"SELECT location, question FROM tbl_{strQuestions} WHERE id = ?", (strProperty, ))
+        dbcursor.execute(f"SELECT location, question FROM tbl_{strQuestions} WHERE id = '{strProperty}'")
         lisLocationQuestion = dbcursor.fetchall()
         for item in lisLocationQuestion:
             strPropertyLocation = item[0]
             strQuestion = item[1]
 
         # Update Database to the Location the user is now at
-        dbcursor.execute(f"UPDATE tbl_{strGuildID} SET current_location = ? WHERE id = ?", (strProperty, strTeamName))
+        dbcursor.execute(f"UPDATE tbl_{strGuildID} SET current_location = '{strProperty}' WHERE id = '{strTeamName}'")
 
         # Send user a message telling the the Question, Location and Property
         await ctx.send(f':question: The question for {strProperty} at {strPropertyLocation} is: {strQuestion}')
@@ -114,17 +124,17 @@ class claGame(commands.Cog):
     ##################
 
     # Command Handling #
-    @commands.command()
+    @commands.command(aliases=['answ', 'a'])
     @commands.check(funValidChannel)
     @commands.has_any_role("team1", "team2", "team3", "team4", "team5", "team6", "team7", "team8", "team9")
-    async def answ(self, ctx, *, strAnswer):
+    async def answer(self, ctx, *, strAnswer):
 
         ## Declare some key variables ##
         strGuildID = str(ctx.guild.id)
         strTeamName = str(utils.find(lambda i: i.name in self.lisTeamRoles, ctx.author.roles))
 
         ## Get teams current location ##
-        dbcursor.execute(f"SELECT current_location FROM tbl_{strGuildID} WHERE id = ?", (strTeamName, ))
+        dbcursor.execute(f"SELECT current_location FROM tbl_{strGuildID} WHERE id = '{strTeamName}'")
         lisCurrentLocation = dbcursor.fetchall()
         tupCurrentLocation = lisCurrentLocation[0]
         strCurrentLocation = tupCurrentLocation[0]
@@ -142,7 +152,7 @@ class claGame(commands.Cog):
         strProperty = strCurrentLocation
 
         ## Get teams money and if they have visited this property from the database ##
-        dbcursor.execute(f"SELECT money, {strProperty}_visted FROM tbl_{strGuildID} WHERE id = ?",  (strTeamName ,))
+        dbcursor.execute(f"SELECT money, {strProperty}_visted FROM tbl_{strGuildID} WHERE id = '{strTeamName}'")
         lisMoneyVisted = dbcursor.fetchall()
         for item in lisMoneyVisted:
             intTeamsMoney = item[0]
@@ -164,13 +174,13 @@ class claGame(commands.Cog):
                 
 
         ## Get which set of Questions the guild is using ##
-        dbcursor.execute("SELECT questions FROM tbl_guilds WHERE id = ?", (strGuildID, ))
+        dbcursor.execute(f"SELECT questions FROM tbl_guilds WHERE id = '{strGuildID}'")
         lisQuestions = dbcursor.fetchall()
         tupQuestions = lisQuestions[0]
         strQuestions = tupQuestions[0]
 
         ## Get answer and value from database ##
-        dbcursor.execute(f"SELECT answer, value FROM tbl_{strQuestions} WHERE id = ?", (strProperty, ))
+        dbcursor.execute(f"SELECT answer, value FROM tbl_{strQuestions} WHERE id = '{strProperty}'")
         lisOwnerAnswer = dbcursor.fetchall()
         for item in lisOwnerAnswer:
             strCorrectAnswers = item[0]
@@ -211,6 +221,7 @@ class claGame(commands.Cog):
             intPartialRatio = fuzz.partial_ratio(strCorrectAnswer, strAnswer)
             intTokenSetRatio = fuzz.token_set_ratio(strCorrectAnswer, strAnswer)
 
+            print(intTokenSetRatio, intTokenSetRatio)
 
             if intPartialRatio >= 80 or intTokenSetRatio >= 80:
                 blnAnswerCorrect = True
@@ -218,110 +229,93 @@ class claGame(commands.Cog):
             else:
                 blnAnswerCorrect = False
 
-        ## Check if team can afford ##
-        if blnDoubleRent == True:
-            if intTeamsMoney >= intValue * 2:
-                blnAfford = True
-            else:
-                blnAfford = False
-        elif blnDoubleRent == False:
-            if intTeamsMoney >= intValue:
-                blnAfford = True
-            else:
-                blnAfford = False
-        else:
-            logging.error(f'Unexpected error: intTeamsMoney is not valid! {intTeamsMoney}')
-            await ctx.send(f':satellite: An unexpected error occurred! ```The error is: intTeamsMoney is not valid! {intTeamsMoney}``` ')
-
-
-        ## Check all the information collected above against the users input ##
-
-        ### Answer is correct and property is not owned ###
-        if blnAnswerCorrect == True and strOwner == None:
+    
+        ## Checks ##
+        ### Answer is correct AND the property is NOT owned ### YES
+        if blnAnswerCorrect == True and strOwner == None and blnDoubleRent == False: 
 
             # Update property visited in database #
-            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET {strProperty}_visted = 'Y' WHERE id = ?", (strTeamName, ))
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET {strProperty}_visted = 'Y' WHERE id = '{strTeamName}'")
 
-            # Update teams money
+            # Update teams money and set owner #
             intUpdatedMoney = intTeamsMoney + intValue
-            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strTeamName))
-            await ctx.send(':white_check_mark: This property is also available to own!')
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = '{intUpdatedMoney}', {strProperty}_owner = 'Y' WHERE id = '{strTeamName}'")
 
-        ### Answer is correct and property is owned and owner has a group of properties so pay double rent ###
-        elif blnAnswerCorrect == True and blnAfford == True and blnDoubleRent == True:
+            # Notify annouments of the Owner #
+            catMonopolyRun = utils.get(ctx.guild.categories, name="Monopoly Run")
+            chaAnnouncementChannel = utils.get(ctx.guild.channels, name="announcements", category_id=catMonopolyRun.id)
+            await chaAnnouncementChannel.send(f':house: {strTeamName} now owns {strProperty}!')
+
+            await ctx.send(f':white_check_mark: You now own {strProperty}!')
+
+        ### Answer is correct AND the property is owned AND the team can afford rent ### YES
+        elif blnAnswerCorrect == True and strOwner != None and blnDoubleRent == False: 
 
             # Update property visited in database #
-            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET {strProperty}_visted = 'Y' WHERE id = ?", (strTeamName, ))
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET {strProperty}_visted = 'Y' WHERE id = '{strTeamName}'")
 
             # Update teams money #
             intUpdatedMoney = intTeamsMoney + intValue 
-            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strTeamName))
-
-            # Update owners money #
-            chaOwner = utils.get(ctx.guild.channels, name=strOwner)
-            await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue * 2} on {strProperty}!')
-            intUpdatedMoney = intTeamsMoney + (intValue * 2)
-            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strOwner))
-            await ctx.send(f':white_check_mark: However since: {strOwner} already owns that property and the other properties in the same group you paid: £{intValue*2} in rent!')
-
-        ### Answer is correct and property is owned so pay rent ###
-        elif blnAnswerCorrect == True and blnAfford == True:
-
-            # Update property visited in database #
-            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET {strProperty}_visted = 'Y' WHERE id = ?", (strTeamName, ))
-
-            # Update teams money #
-            intUpdatedMoney = intTeamsMoney + intValue 
-            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strTeamName))
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = '{intUpdatedMoney}' WHERE id = '{strTeamName}'")
 
             # Update owners money #
             chaOwner = utils.get(ctx.guild.channels, name=strOwner)
             await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue} on {strProperty}!')
             intUpdatedMoney = intTeamsMoney + intValue
-            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strOwner))
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = '{intUpdatedMoney}' WHERE id = '{strOwner}'")
             await ctx.send(f':white_check_mark: However since: {strOwner} already owns that property you paid: £{strValue} in rent!')
 
-        ### Answer is correct however the team can not afford to pay the rent ##
-        elif blnAfford == False:
-            await ctx.send(':tophat: Answer is correct however you can not afford the rent on that property!')
+        ### Answer is correct AND the property is owned  AND double rent AND the team can afford rent ### YES
+        elif blnAnswerCorrect == True and strOwner != None and blnDoubleRent == True:
 
-        ### Answer is incorrect no Double Rent ###
-        elif blnAnswerCorrect == False and blnDoubleRent == False:
+            # Update property visited in database #
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET {strProperty}_visted = 'Y' WHERE id = '{strTeamName}'")
+
+            # Update teams money #
+            intUpdatedMoney = intTeamsMoney + intValue 
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = '{intUpdatedMoney}' WHERE id = '{strTeamName}'")
+
+            # Update owners money #
+            chaOwner = utils.get(ctx.guild.channels, name=strOwner)
+            await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue * 2} on {strProperty}!')
+            intUpdatedMoney = intTeamsMoney + (intValue * 2)
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = '{intUpdatedMoney}' WHERE id = '{strOwner}'")
+            await ctx.send(f':white_check_mark: However since: {strOwner} already owns that property and the other properties in the same group you paid: £{intValue*2} in rent!')
+
+        ### Answer is incorrect AND the property is NOT owned ###
+        elif blnAnswerCorrect == False and strOwner == None and blnDoubleRent == False:
+            await ctx.send(f':negative_squared_cross_mark: Try again! You were {claGame.funHighestNumber(intPartialRatio, intTokenSetRatio)}% correct!')
+
+        ### Answer is incorrect AND the property is owned AND the team can afford rent ### YES
+        elif blnAnswerCorrect == False and strOwner != None and blnDoubleRent == False:
+
+            await ctx.send(f':negative_squared_cross_mark: Try again! You were {claGame.funHighestNumber(intPartialRatio, intTokenSetRatio)}% correct! However since: {strOwner} already owns that property you paid: £{strValue} in rent!')
 
             # Update owners money #
             chaOwner = utils.get(ctx.guild.channels, name=strOwner)
             await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue} on {strProperty}, even though they got the answer incorrect!')
             intUpdatedMoney = intTeamsMoney + intValue 
-            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strTeamName))
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = '{intUpdatedMoney}' WHERE id = '{strOwner}'")
 
-            # Notify the user of the highest they were correct #
-            if intPartialRatio > intTokenSetRatio:
-                await ctx.send(f':negative_squared_cross_mark: Try again! You were {intPartialRatio}% correct!')
-            else:
-                await ctx.send(f':negative_squared_cross_mark: Try again! You were {intTokenSetRatio}% correct!')
+        ### Answer is incorrect AND the property is owned AND double rent AND the team can afford rent ### YES
+        elif blnAnswerCorrect == False and strOwner != None and blnDoubleRent == True:
 
-        ### Answer is incorrect and Double Rent ###
-        elif blnAnswerCorrect == False and blnDoubleRent == True:
+            await ctx.send(f':negative_squared_cross_mark: Try again! You were {claGame.funHighestNumber(intPartialRatio, intTokenSetRatio)}% correct! However since: {strOwner} already owns that property and the other properties in the same group you paid: £{intValue*2} in rent!')
 
-            # Update owners money
+            # Update owners money #
             chaOwner = utils.get(ctx.guild.channels, name=strOwner)
-            await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue*2} on {strProperty}, even though they got the answer incorrect!')
-            intUpdatedMoney = intTeamsMoney + (intValue * 2)
-            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strTeamName))
+            await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue} on {strProperty}, even though they got the answer incorrect!')
+            intUpdatedMoney = intTeamsMoney + (intValue * 2) 
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = '{intUpdatedMoney}' WHERE id = '{strOwner}'")
 
-            # Notify the user of the highest they were correct #
-            if intPartialRatio > intTokenSetRatio:
-                await ctx.send(f':negative_squared_cross_mark: Try again! You were {intPartialRatio}% correct!')
-            else:
-                await ctx.send(f':negative_squared_cross_mark: Try again! You were {intTokenSetRatio}% correct!')
 
         ### Error ###
         else:
-            logging.error(f'Unexpected error: Answer, Correct Answer, Answer Correct, Owner, Double Rent, Afford is not valid! {strAnswer, strCorrectAnswer, blnAnswerCorrect, strOwner, blnDoubleRent, blnAfford}')
-            await ctx.send(f':satellite: An unexpected error occurred! ```The error is: Answer, Correct Answer, Answer Correct, Owner, Double Rent, Afford is not valid! {strAnswer, strCorrectAnswer, blnAnswerCorrect, strOwner, blnDoubleRent, blnAfford}``` ')
+            logging.error(f'Unexpected error: Answer, Correct Answer, Answer Correct, Owner, Double Rent, Afford is not valid! {strAnswer, strCorrectAnswer, blnAnswerCorrect, strOwner, blnDoubleRent, }')
+            await ctx.send(f':satellite: An unexpected error occurred! ```The error is: Answer, Correct Answer, Answer Correct, Owner, Double Rent, Afford is not valid! {strAnswer, strCorrectAnswer, blnAnswerCorrect, strOwner, blnDoubleRent, }``` ')
 
     # Error Handling #
-    @answ.error
+    @answer.error
     async def answ_error(self, ctx, error):
         if isinstance(error, commands.MissingAnyRole):
             await ctx.send(':no_entry: You must have a team role! For example role: team1')
@@ -329,91 +323,6 @@ class claGame(commands.Cog):
             await ctx.send(':no_entry: You must use this command in you team channel e.g. team1!')
         elif isinstance(error, commands.MissingRequiredArgument):
             await ctx.send(':no_entry:  Please specify the answer!  ```e.g. &answ two cats and a dog```')
-        else:
-            logging.error(f'Unexpected error: {error}')
-            await ctx.send(f':satellite: An unexpected error occurred! ```The error is: {error}``` ')
-
-    ###############
-    # Own Command #
-    ###############
-
-    # Command Handling #
-    @commands.command()
-    @commands.check(funValidChannel)
-    @commands.has_any_role("team1", "team2", "team3", "team4", "team5", "team6", "team7", "team8", "team9")
-    async def own(self, ctx, strProperty: funToLower):
-
-        ## Declare some key variables ##
-        strGuildID = str(ctx.guild.id)
-        strTeamName = str(utils.find(lambda i: i.name in self.lisTeamRoles, ctx.author.roles))
-
-        ## Check if property exits ##
-        if strProperty not in self.lisProperties:
-            await ctx.send(':tophat: Please enter a valid property! e.g. ```&own brown1``` For a list of properties see the properties channel!')
-            return None
-
-        ## Check if a team owns the property ##
-        dbcursor.execute(f"SELECT id FROM tbl_{strGuildID} WHERE {strProperty}_owner = 'Y'")
-        lisOwner = dbcursor.fetchall()
-        if not lisOwner:
-            strOwner = None
-        else:
-            tupOwner = lisOwner[0]
-            strOwner = tupOwner[0]
-            await ctx.send(f':tophat: {strOwner} already owns that property!')
-            return None
-
-        ## Get money and visited from the database ##
-        dbcursor.execute(f"SELECT money, {strProperty}_visted FROM tbl_{strGuildID} WHERE id = ?",  (strTeamName ,))
-        lisMoneyVisted = dbcursor.fetchall()
-        for item in lisMoneyVisted:
-            intTeamsMoney = item[0]
-            strVisted = item[1]
-
-        ## Check if the team has visited that property ##
-        if strVisted == 'N':
-            await ctx.send(':tophat: You have not answered the question for that property correctly. Please answer the question correctly and try again!')
-            return None
-
-        ## Get which set of Questions the guild is using ##
-        dbcursor.execute("SELECT questions FROM tbl_guilds WHERE id = ?", (strGuildID, ))
-        lisQuestions = dbcursor.fetchall()
-        tupQuestions = lisQuestions[0]
-        strQuestions = tupQuestions[0]
-
-        ## Get property value from database ##
-        dbcursor.execute(f"SELECT value FROM tbl_{strQuestions} WHERE id = ?", (strProperty, ))
-        lisValue = dbcursor.fetchall()
-        tupValue = lisValue[0]
-        intValue = int(tupValue[0])
-
-        ## Check if team can afford ##
-        if intTeamsMoney - intValue < 0:
-            await ctx.send(':tophat: You can not afford that property!')
-            return None
-
-        ## Get and Set Announcement Channel ##
-        catMonopolyRun = utils.get(ctx.guild.categories, name="Monopoly Run")
-        chaAnnouncementChannel = utils.get(ctx.guild.channels, name="announcements", category_id=catMonopolyRun.id)
-
-        await ctx.send(f':house: You have brought: {strProperty} for £{intValue}!')
-        dbcursor.execute(f"SELECT money FROM tbl_{strGuildID} WHERE id = ?",  (strTeamName ,))
-        lisMoney = dbcursor.fetchall()
-        tupMoney = lisMoney[0]
-        intTeamsMoney = int(tupMoney[0])
-        intUpdatedMoney = intTeamsMoney - intValue
-        dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ?, {strProperty}_owner = 'Y' WHERE id = ?", (intUpdatedMoney, strTeamName))
-        await chaAnnouncementChannel.send(f':house: {strTeamName} now owns {strProperty}!')
-
-    # Error Handling #
-    @own.error
-    async def own_error(self, ctx, error):
-        if isinstance(error, commands.MissingAnyRole):
-            await ctx.send(':no_entry: You must have a team role! For example role: team1')
-        elif isinstance(error, commands.CheckFailure):
-            await ctx.send(':no_entry: You must use this command in you team channel e.g. team1!')
-        elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(':no_entry: Please specify the property ```e.g. &own brown1```')
         else:
             logging.error(f'Unexpected error: {error}')
             await ctx.send(f':satellite: An unexpected error occurred! ```The error is: {error}``` ')
@@ -433,7 +342,7 @@ class claGame(commands.Cog):
         strTeamName = str(utils.find(lambda i: i.name in self.lisTeamRoles, ctx.author.roles))
 
         ## Get money from database ##
-        dbcursor.execute(f"SELECT money FROM tbl_{strGuildID} WHERE id = ?", (strTeamName ,))
+        dbcursor.execute(f"SELECT money FROM tbl_{strGuildID} WHERE id = '{strTeamName}'")
         lisMoney = dbcursor.fetchall()
         tupMoney = lisMoney[0]
         intMoney = tupMoney[0]

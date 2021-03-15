@@ -10,15 +10,15 @@ import re
 ###############
 # Setup Class #
 ###############
-class claSetup(commands.Cog):
+class claAdministration(commands.Cog):
 
     ####################
     # Initialize Class #
     ####################
     def __init__(self, bot):
         self.bot = bot
-        self.UpdatePropertiesChannel = claSetup.UpdatePropertiesChannel
-        self.UpdateLeaderBoard = claSetup.UpdateLeaderBoard
+        self.UpdatePropertiesChannel = claAdministration.UpdatePropertiesChannel
+        self.UpdateLeaderBoard = claAdministration.UpdateLeaderBoard
 
     #################
     # Setup Command #
@@ -36,7 +36,7 @@ class claSetup(commands.Cog):
         lisRoles = []
 
         ## Check if guild is already setup ##
-        dbcursor.execute("SELECT id FROM tbl_guilds WHERE id = ?", (strGuildID, ))
+        dbcursor.execute("SELECT id FROM tbl_guilds WHERE id = %s", (strGuildID, ))
         lisExists = dbcursor.fetchall()
         for item in lisExists:
             if intGuildID == item[0]:
@@ -44,7 +44,7 @@ class claSetup(commands.Cog):
                 return None
 
         ## Check Question set exists ##
-        dbcursor.execute("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME LIKE ?", (f'tbl_{strQuestionSet}', ))
+        dbcursor.execute("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME LIKE %s", (f'tbl_{strQuestionSet}', ))
         lisQuestionSet = dbcursor.fetchall()
         if not lisQuestionSet:
             await ctx.send(':no_entry: That question set was not found!')
@@ -67,7 +67,7 @@ class claSetup(commands.Cog):
             lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8', 'team9']
 
         ## Create Monopoly Run category and role ##
-        roleMonopolyRun = await ctx.guild.create_role(name='Monopoly Run')
+        roleMonopolyRunAdministrator = await ctx.guild.create_role(name='Monopoly Run Administrator')
         catMonopolyRun = await ctx.guild.create_category('Monopoly Run')
 
         ## Create team roles ##
@@ -78,33 +78,30 @@ class claSetup(commands.Cog):
         ## Create announcements channel and set permissions ##
         chaAnnouncements = await ctx.guild.create_text_channel('announcements', category=catMonopolyRun)
         await chaAnnouncements.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
-        await chaAnnouncements.set_permissions(roleMonopolyRun, send_messages=False, read_messages=True)
 
         ## Create leaderboard channel and set permissions ##
         chaLeaderBoard = await ctx.guild.create_text_channel('leaderboard', category=catMonopolyRun)
         await chaLeaderBoard.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
-        await chaLeaderBoard.set_permissions(roleMonopolyRun, send_messages=False, read_messages=True)
 
         ## Create properties channel and set permissions ##
         chaProperties = await ctx.guild.create_text_channel('properties', category=catMonopolyRun)
         await chaProperties.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
-        await chaProperties.set_permissions(roleMonopolyRun, send_messages=False, read_messages=True)
 
-        ## Create How to play channel and set permissions ##
-        chaHowToPlay = await ctx.guild.create_text_channel('HowToPlay', category=catMonopolyRun)
-        await chaHowToPlay.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
-        await chaHowToPlay.set_permissions(roleMonopolyRun, send_messages=False, read_messages=True)
+        ## Create Help channel and set permissions ##
+        chaHelp = await ctx.guild.create_text_channel('Help', category=catMonopolyRun)
+        await chaHelp.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
+        msg = await chaHelp.send('If you need help click the 👍 button below...')
+        await msg.add_reaction('👍')
 
-        ## Create auction channel and set permissions ##
-        chaAuction = await ctx.guild.create_text_channel('Auction', category=catMonopolyRun)
-        await chaAuction.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
-        await chaAuction.set_permissions(roleMonopolyRun, send_messages=False, read_messages=True)
 
         ## Create team channels and set permissions ##
         for strTeam, strRole in zip(lisTeams, lisRoles): # Loop through both lists at the same time
             chaChannel = await ctx.guild.create_text_channel(f"{strTeam}", category=catMonopolyRun)
             await chaChannel.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
             await chaChannel.set_permissions(strRole, send_messages=False, read_messages=True, view_channel=True)
+        
+        for chaChannel in catMonopolyRun.channels:
+            await chaChannel.set_permissions(roleMonopolyRunAdministrator, send_messages=True, read_messages=True, view_channel=True)
 
         ## Create guilds table in the database ##
         dbcursor.execute(f"""CREATE OR REPLACE TABLE tbl_{strGuildID} (
@@ -159,10 +156,10 @@ class claSetup(commands.Cog):
 
         ## Create records in guilds table  ##
         for strTeam in lisTeams:
-            dbcursor.execute(f"INSERT INTO tbl_{strGuildID} (id, money, current_location) VALUES (?, ?, ?)", (strTeam, 1500, ''))
+            dbcursor.execute(f"INSERT INTO tbl_{strGuildID} (id, money, current_location) VALUES (%s, %s, %s)", (strTeam, 1500, ''))
 
         ## Create a record in tbl_guild ##
-        dbcursor.execute("INSERT INTO tbl_guilds (id, name, questions, teams) VALUES (?, ?, ?, ?)", (intGuildID, strGuildName, strQuestionSet ,intNumberOfTeams))
+        dbcursor.execute("INSERT INTO tbl_guilds (id, name, questions, teams) VALUES (%s, %s, %s, %s)", (intGuildID, strGuildName, strQuestionSet ,intNumberOfTeams))
 
         ## Tell the user setup is complete ##
         await ctx.send('Setup is done!')
@@ -198,7 +195,7 @@ class claSetup(commands.Cog):
         strGuildID = str(ctx.guild.id)
 
         ## Check if there is anything to remove ##
-        dbcursor.execute("SELECT id FROM tbl_guilds WHERE id = ?", (strGuildID, ))
+        dbcursor.execute("SELECT id FROM tbl_guilds WHERE id = %s", (strGuildID, ))
         lisExists = dbcursor.fetchall()
         if not lisExists:
             await ctx.send(':no_entry: No database records exist for this guild or server!')
@@ -212,7 +209,7 @@ class claSetup(commands.Cog):
                 await category.delete()
 
         ## Declare a list of roles to try and delete ##
-        lisRoles = ['Monopoly Run', 'team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8', 'team9']
+        lisRoles = ['Monopoly Run Administrator', 'team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8', 'team9']
 
         ## Delete roles ##
         for role in ctx.guild.roles:
@@ -223,7 +220,7 @@ class claSetup(commands.Cog):
         dbcursor.execute(f"DROP TABLE tbl_{strGuildID}")
 
         ## Remove record from tbl_guild ##
-        dbcursor.execute("DELETE FROM tbl_guilds WHERE id = ?", (strGuildID, ))
+        dbcursor.execute("DELETE FROM tbl_guilds WHERE id = %s", (strGuildID, ))
 
     # Error Handling #
     @remove.error
@@ -251,7 +248,7 @@ class claSetup(commands.Cog):
         strGuildID = str(ctx.guild.id)
 
         ## Check if there is anything to add to ##
-        dbcursor.execute(f"SELECT teams from tbl_guilds WHERE id = ?", (strGuildID, ))
+        dbcursor.execute(f"SELECT teams from tbl_guilds WHERE id = %s", (strGuildID, ))
         lisNumberOfTeams = dbcursor.fetchall()
         if not lisNumberOfTeams:
             await ctx.send(':no_entry: No database records exist for this guild or server!')
@@ -284,10 +281,10 @@ class claSetup(commands.Cog):
         await chaChannel.set_permissions(rolTeam, send_messages=False, read_messages=True, view_channel=True)
 
         ## Add team record to guilds table ##
-        dbcursor.execute(f"INSERT INTO tbl_{strGuildID} (id, money, current_location) VALUES (?, ?, ?)", (lisTeams[intUpdatedNumberOfTeams], 1500, ''))
+        dbcursor.execute(f"INSERT INTO tbl_{strGuildID} (id, money, current_location) VALUES (%s, %s, %s)", (lisTeams[intUpdatedNumberOfTeams], 1500, ''))
 
         ## Update number of teams in guild table ##
-        dbcursor.execute(f"UPDATE tbl_guilds SET teams = ? WHERE id = ?", (intUpdatedNumberOfTeams + 1, strGuildID))
+        dbcursor.execute(f"UPDATE tbl_guilds SET teams = %s WHERE id = %s", (intUpdatedNumberOfTeams + 1, strGuildID))
 
     # Error Handling #
     @add.error
@@ -312,7 +309,7 @@ class claSetup(commands.Cog):
         catMonopolyRun = utils.get(ctx.guild.categories, name="Monopoly Run")
 
         ## Check if there is anything to add to ##
-        dbcursor.execute(f"SELECT teams from tbl_guilds WHERE id = ?", (strGuildID, ))
+        dbcursor.execute(f"SELECT teams from tbl_guilds WHERE id = %s", (strGuildID, ))
         lisNumberOfTeams = dbcursor.fetchall()
         if not lisNumberOfTeams:
             await ctx.send(':no_entry: No database records exist for this guild or server!')
@@ -348,11 +345,6 @@ class claSetup(commands.Cog):
             chaTeam = utils.get(ctx.guild.channels, name=f"{strTeam}")
             await chaTeam.set_permissions(rolTeam, send_messages=True, view_channel=True)
 
-        ## Update Auction Channel ##
-        roleMonopolyRun = utils.get(ctx.guild.roles, name="Monopoly Run")
-        chaAuctionChannel = utils.get(ctx.guild.channels, name="auction", category_id=catMonopolyRun.id)
-        await chaAuctionChannel.set_permissions(roleMonopolyRun, send_messages=True, view_channel=True)
-
         ## Get Announcement Channel and send a message ##
         chaAnnouncementChannel = utils.get(ctx.guild.channels, name="announcements", category_id=catMonopolyRun.id)
         await chaAnnouncementChannel.send('Game Start!')
@@ -367,27 +359,27 @@ class claSetup(commands.Cog):
             await ctx.send(f':satellite: An unexpected error occurred! ```The error is: {error}``` ')
 
     ####################
-    # End Game Command #
+    # Start Game Command #
     ####################
 
     # Command Handling #
     @commands.command()
     @commands.has_guild_permissions(administrator=True)
-    async def end(self, ctx):
+    async def stop(self, ctx):
 
         ## Declare some key variables ##
         strGuildID = str(ctx.guild.id)
         catMonopolyRun = utils.get(ctx.guild.categories, name="Monopoly Run")
 
         ## Check if there is anything to add to ##
-        dbcursor.execute(f"SELECT teams from tbl_guilds WHERE id = ?", (strGuildID, ))
+        dbcursor.execute(f"SELECT teams from tbl_guilds WHERE id = %s", (strGuildID, ))
         lisNumberOfTeams = dbcursor.fetchall()
         if not lisNumberOfTeams:
             await ctx.send(':no_entry: No database records exist for this guild or server!')
             return None
 
-        claSetup.UpdatePropertiesChannel.stop()
-        claSetup.UpdateLeaderBoard.stop()
+        claAdministration.UpdatePropertiesChannel.stop()
+        claAdministration.UpdateLeaderBoard.stop()
         
         ## Get the number of teams the guild currently has ##
         tupNumberOfTeams = lisNumberOfTeams[0]
@@ -415,17 +407,12 @@ class claSetup(commands.Cog):
             chaTeam = utils.get(ctx.guild.channels, name=f"{strTeam}")
             await chaTeam.set_permissions(rolTeam, send_messages=False)
 
-        ## Update Auction Channel ##
-        roleMonopolyRun = utils.get(ctx.guild.roles, name="Monopoly Run")
-        chaAuctionChannel = utils.get(ctx.guild.channels, name="auction", category_id=catMonopolyRun.id)
-        await chaAuctionChannel.set_permissions(roleMonopolyRun, send_messages=False)
-
         ## Get Announcement Channel and send a message ##
         chaAnnouncementChannel = utils.get(ctx.guild.channels, name="announcements", category_id=catMonopolyRun.id)
         await chaAnnouncementChannel.send(f'Game Over!')
 
     # Error Handling #
-    @end.error
+    @start.error
     async def end_error(self, ctx, error):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send(':no_entry: You do not have permission to use that command!')
@@ -443,7 +430,7 @@ class claSetup(commands.Cog):
         strGuildID = str(ctx.guild.id)
 
         ## Get which set of Questions the guild is using ##
-        dbcursor.execute("SELECT questions FROM tbl_guilds WHERE id = ?", (strGuildID, ))
+        dbcursor.execute("SELECT questions FROM tbl_guilds WHERE id = %s", (strGuildID, ))
         lisQuestions = dbcursor.fetchall()
         tupQuestions = lisQuestions[0]
         strQuestions = tupQuestions[0]
@@ -536,3 +523,4 @@ class claSetup(commands.Cog):
 
         ## Send the embed ##
         await chaLeaderBoard.send(embed = emLeaderBoard)
+        
