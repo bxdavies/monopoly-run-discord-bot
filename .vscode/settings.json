@@ -7,5 +7,11 @@
         "plaintext",
         "python",
         "markdown"
+    ],
+    "spellright.ignoreFiles": [
+        "**/.gitignore",
+        "**/.spellignore",
+        "**/.settings.json",
+        ".env"
     ]
 }

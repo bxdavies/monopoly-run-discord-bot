@@ -23,7 +23,7 @@ if not strLoggingLocation:
     strLoggingLocation = os.getcwd() + '/Monopoly-Run-bot.log'
 else:
     ### Check Directory exits ###
-    if os.path.isdir(strLoggingLocation) == True:
+    if os.path.isdir(strLoggingLocation) is True:
         strLoggingLocation = strLoggingLocation + 'Monopoly-Run-bot.log'
 
     ### Create Directory is not exits ###
@@ -55,4 +55,3 @@ except PermissionError:
 except Exception as e:
     print(f'CRITICAL Unknown error when setting up Logging: {e}')
     sys.exit(1)
-

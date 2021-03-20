@@ -32,7 +32,7 @@ I suggest you use Python 3.9 or greater as it has some performance improvements 
 
 4. Install python and the MariaDB C Connector with: ```sudo apt-get install python3.9 python3.9-dev python3-pip gcc libmariadb3 libmariadb-dev -y```.
 
-5. From the sql directory go back to the repository folder with ``` cd ..```
+5. From the SQL directory go back to the repository folder with ``` cd ..```
 6. Install python modules with: ```pip3 install -r requirements.txt ```
 7. Create a .env file using the following: ```nano .env``` and then add the following to it: 
 ```
@@ -104,4 +104,11 @@ And then from there onwards you should follow the Markdown Heading hierarchy:
 ##### Comment 5
 ```
 
-## Stats ##
+#### Badges ####
+
+[Maintainability](https://codeclimate.com) 
+
+[Code Factor](https://www.codefactor.io)
+
+[Py Up](https://pyup.io)
+

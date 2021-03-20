@@ -108,49 +108,49 @@ class claAdministration(commands.Cog):
         money smallint(5) NOT NULL,
         current_location TEXT,
         brown1_owner set('Y','N') NOT NULL DEFAULT 'N',
-        brown1_visted set('Y','N') NOT NULL DEFAULT 'N',
+        brown1_visited set('Y','N') NOT NULL DEFAULT 'N',
         brown2_owner set('Y','N') NOT NULL DEFAULT 'N',
-        brown2_visted set('Y','N') NOT NULL DEFAULT 'N',
+        brown2_visited set('Y','N') NOT NULL DEFAULT 'N',
         lightblue1_owner set('Y','N') NOT NULL DEFAULT 'N',
-        lightblue1_visted set('Y','N') NOT NULL DEFAULT 'N',
+        lightblue1_visited set('Y','N') NOT NULL DEFAULT 'N',
         lightblue2_owner set('Y','N') NOT NULL DEFAULT 'N',
-        lightblue2_visted set('Y','N') NOT NULL DEFAULT 'N',
+        lightblue2_visited set('Y','N') NOT NULL DEFAULT 'N',
         lightblue3_owner set('Y','N') NOT NULL DEFAULT 'N',
-        lightblue3_visted set('Y','N') NOT NULL DEFAULT 'N',
+        lightblue3_visited set('Y','N') NOT NULL DEFAULT 'N',
         pink1_owner set('Y','N') NOT NULL DEFAULT 'N',
-        pink1_visted set('Y','N') NOT NULL DEFAULT 'N',
+        pink1_visited set('Y','N') NOT NULL DEFAULT 'N',
         pink2_owner set('Y','N') NOT NULL DEFAULT 'N',
-        pink2_visted set('Y','N') NOT NULL DEFAULT 'N',
+        pink2_visited set('Y','N') NOT NULL DEFAULT 'N',
         pink3_owner set('Y','N') NOT NULL DEFAULT 'N',
-        pink3_visted set('Y','N') NOT NULL DEFAULT 'N',
+        pink3_visited set('Y','N') NOT NULL DEFAULT 'N',
         orange1_owner set('Y','N') NOT NULL DEFAULT 'N',
-        orange1_visted set('Y','N') NOT NULL DEFAULT 'N',
+        orange1_visited set('Y','N') NOT NULL DEFAULT 'N',
         orange2_owner set('Y','N') NOT NULL DEFAULT 'N',
-        orange2_visted set('Y','N') NOT NULL DEFAULT 'N',
+        orange2_visited set('Y','N') NOT NULL DEFAULT 'N',
         orange3_owner set('Y','N') NOT NULL DEFAULT 'N',
-        orange3_visted set('Y','N') NOT NULL DEFAULT 'N',
+        orange3_visited set('Y','N') NOT NULL DEFAULT 'N',
         red1_owner set('Y','N') NOT NULL DEFAULT 'N',
-        red1_visted set('Y','N') NOT NULL DEFAULT 'N',
+        red1_visited set('Y','N') NOT NULL DEFAULT 'N',
         red2_owner set('Y','N') NOT NULL DEFAULT 'N',
-        red2_visted set('Y','N') NOT NULL DEFAULT 'N',
+        red2_visited set('Y','N') NOT NULL DEFAULT 'N',
         red3_owner set('Y','N') NOT NULL DEFAULT 'N',
-        red3_visted set('Y','N') NOT NULL DEFAULT 'N',
+        red3_visited set('Y','N') NOT NULL DEFAULT 'N',
         yellow1_owner set('Y','N') NOT NULL DEFAULT 'N',
-        yellow1_visted set('Y','N') NOT NULL DEFAULT 'N',
+        yellow1_visited set('Y','N') NOT NULL DEFAULT 'N',
         yellow2_owner set('Y','N') NOT NULL DEFAULT 'N',
-        yellow2_visted set('Y','N') NOT NULL DEFAULT 'N',
+        yellow2_visited set('Y','N') NOT NULL DEFAULT 'N',
         yellow3_owner set('Y','N') NOT NULL DEFAULT 'N',
-        yellow3_visted set('Y','N') NOT NULL DEFAULT 'N',
+        yellow3_visited set('Y','N') NOT NULL DEFAULT 'N',
         green1_owner set('Y','N') NOT NULL DEFAULT 'N',
-        green1_visted set('Y','N') NOT NULL DEFAULT 'N',
+        green1_visited set('Y','N') NOT NULL DEFAULT 'N',
         green2_owner set('Y','N') NOT NULL DEFAULT 'N',
-        green2_visted set('Y','N') NOT NULL DEFAULT 'N',
+        green2_visited set('Y','N') NOT NULL DEFAULT 'N',
         green3_owner set('Y','N') NOT NULL DEFAULT 'N',
-        green3_visted set('Y','N') NOT NULL DEFAULT 'N',
+        green3_visited set('Y','N') NOT NULL DEFAULT 'N',
         darkblue1_owner set('Y','N') NOT NULL DEFAULT 'N',
-        darkblue1_visted set('Y','N') NOT NULL DEFAULT 'N',
+        darkblue1_visited set('Y','N') NOT NULL DEFAULT 'N',
         darkblue2_owner set('Y','N') NOT NULL DEFAULT 'N',
-        darkblue2_visted set('Y','N') NOT NULL DEFAULT 'N'
+        darkblue2_visited set('Y','N') NOT NULL DEFAULT 'N'
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""")
 
         ## Create records in guilds table  ##
@@ -172,8 +172,9 @@ class claAdministration(commands.Cog):
     async def remove(self, ctx, blnConfirm: bool):
 
         ## Check if blnConfirm is false ##
-        if blnConfirm == False:
+        if blnConfirm is False:
            raise commands.BadArgument()
+
         ## Declare some key variables ##
         strGuildID = str(ctx.guild.id)
 
@@ -456,31 +457,31 @@ class claAdministration(commands.Cog):
             if ctx.command.name == 'setup':
                 await ctx.send(f':no_entry: Please specify both the number of teams to create and the question set! ```e.g. mr {ctx.command} 4 test```')
             elif ctx.command.name == 'remove':
-                await ctx.send(f':no_entry: Please enter true to confim removal! ```e.g. mr {ctx.command} true```')
+                await ctx.send(f':no_entry: Please enter true to confirm removal! ```e.g. mr {ctx.command} true```')
 
-        # Missing Permissons #
+        # Missing Permissions #
         elif isinstance(error, commands.MissingPermissions):
             await ctx.send(':no_entry: You do not have permission to use that command!')
         elif isinstance(error, commands.BadArgument):
             if ctx.command.name == 'setup':
                 await ctx.send(f':no_entry: Please enter a valid number of teams to create! ```e.g. mr {ctx.command} 4 test```')
             elif ctx.command.name == 'remove':
-                await ctx.send(f':no_entry: Please enter true to confim removal! ```e.g. mr {ctx.command} true```')
+                await ctx.send(f':no_entry: Please enter true to confirm removal! ```e.g. mr {ctx.command} true```')
         
-        # Database recoreds not found #
+        # Database records not found #
         elif isinstance(error, MonopolyRunError.DatabaseRecordNotFound):
             await ctx.send(':no_entry: No database records were found for this sever! Have you run setup?')
 
         # Too many teams #
         elif isinstance(error,MonopolyRunError.TooManyTeams):
             if ctx.command.name == 'add':
-                await ctx.send(':no_entry: You can not create any teams as you will be over the maxium allowed amount of teams!')
+                await ctx.send(':no_entry: You can not create any teams as you will be over the maximum allowed amount of teams!')
             else:
-                await ctx.send(':no_entry: Maxium amount of teams is 99!')
+                await ctx.send(':no_entry: Maximum amount of teams is 99!')
         
         # Not enough teams #
         elif isinstance(error,MonopolyRunError.NotEnoughTeams):
-            await ctx.send(':no_entry: Minium amount of teams is 2!')
+            await ctx.send(':no_entry: Minimum amount of teams is 2!')
 
         # Any other error #
         else:

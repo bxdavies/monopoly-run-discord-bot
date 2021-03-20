@@ -23,9 +23,9 @@ class claHelp(commands.Cog):
         self.bot = bot
         self.funTeamRole = claHelp.funTeamRole
 
-    ############
-    # Fuctions #
-    ############
+    #############
+    # Functions #
+    #############
 
     ## Return users team role ##
     async def funTeamRole(member, message):
@@ -84,7 +84,7 @@ class claHelp(commands.Cog):
 
     @help.command()
     async def owner(self, ctx):
-        emOwnerHelp = embeds.Embed(title = 'Owner Command Help', description = 'Use mr iwts to auction off a property.', color=Colour.orange())
+        emOwnerHelp = embeds.Embed(title = 'Owner Command Help', description = 'Use mr owner to find the owner of a property.', color=Colour.orange())
         emOwnerHelp.add_field(name= 'Usage:', value='mr owner <property name>')
         emOwnerHelp.add_field(name= 'Example Usage:', value='mr owner pink2')
         emOwnerHelp.add_field(name='⠀', value='⠀', inline=False)
@@ -125,7 +125,7 @@ class claHelp(commands.Cog):
             roleTeam = await self.funTeamRole(member, message)
             
             ### Check Team and Monopoly Run Administrator Roles exist ###      
-            if roleMonopolyRunAdministrator == None:
+            if roleMonopolyRunAdministrator is None:
                 await member.send(':no_entry: Could not find the Monopoly Run Administrator Role!')
                 await message.remove_reaction('👍', member)
                 return None
@@ -137,5 +137,3 @@ class claHelp(commands.Cog):
         ## If reaction is added to the the message saying x team needs help delete the message ##
         elif emoji.name == '👍' and channel.name == 'help' and message.author.id == 787347113188917270 and roleMonopolyRunAdministrator.name == 'Monopoly Run Administrator':
             await message.delete()
-
-

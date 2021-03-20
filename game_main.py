@@ -38,9 +38,9 @@ class claGame(commands.Cog):
     def funToLower(strString):
         return strString.lower()
 
-    ############
-    # Fuctions #
-    ############
+    #############
+    # Functions #
+    #############
 
     ## Return users team role ##
     def funTeamRole(ctx):
@@ -257,7 +257,7 @@ class claGame(commands.Cog):
             intUpdatedMoney = intTeamsMoney + intValue
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = '{intUpdatedMoney}', {strProperty}_owner = 'Y' WHERE id = '{strTeamName}'")
 
-            # Notify annouments of the Owner #
+            # Notify announcements of the Owner #
             catMonopolyRun = utils.get(ctx.guild.categories, name="Monopoly Run")
             chaAnnouncementChannel = utils.get(ctx.guild.channels, name="announcements", category_id=catMonopolyRun.id)
             await chaAnnouncementChannel.send(f':house: {strTeamName} now owns {strProperty}!')
@@ -285,7 +285,7 @@ class claGame(commands.Cog):
         elif blnAnswerCorrect == True and strOwner != None and blnDoubleRent == True:
 
             # Update property visited in database #
-              dbcursor.execute(f"UPDATE tbl_{strGuildID} SET {strProperty}_visted = 'Y' WHERE id = ?", (strTeamName, ))
+              dbcursor.execute(f"UPDATE tbl_{strGuildID} SET {strProperty}_visited = 'Y' WHERE id = ?", (strTeamName, ))
 
             # Update teams money #
             intUpdatedMoney = intTeamsMoney + intValue 
