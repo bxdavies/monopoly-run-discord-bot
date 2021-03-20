@@ -3,9 +3,14 @@
 ##################
 from discord.ext import commands, tasks
 from discord import utils, embeds, Colour
+import re
+
+###########################
+# Import External Classes #
+###########################
 from database_connection import dbcursor
 from logging_setup import logging
-import re
+import errors as MonopolyRunError
 
 ###############
 # Setup Class #
@@ -24,7 +29,6 @@ class claAdministration(commands.Cog):
     # Setup Command #
     #################
 
-    # Command Handling #
     @commands.command()
     @commands.has_guild_permissions(administrator=True)
     async def setup(self, ctx, intNumberOfTeams: int, strQuestionSet):
@@ -36,7 +40,7 @@ class claAdministration(commands.Cog):
         lisRoles = []
 
         ## Check if guild is already setup ##
-        dbcursor.execute("SELECT id FROM tbl_guilds WHERE id = %s", (strGuildID, ))
+        dbcursor.execute("SELECT id FROM tbl_guilds WHERE id = ?", (strGuildID, ))
         lisExists = dbcursor.fetchall()
         for item in lisExists:
             if intGuildID == item[0]:
@@ -44,35 +48,30 @@ class claAdministration(commands.Cog):
                 return None
 
         ## Check Question set exists ##
-        dbcursor.execute("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME LIKE %s", (f'tbl_{strQuestionSet}', ))
+        dbcursor.execute("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME LIKE ?", (f'tbl_{strQuestionSet}', ))
         lisQuestionSet = dbcursor.fetchall()
         if not lisQuestionSet:
             await ctx.send(':no_entry: That question set was not found!')
             return None
 
-        ## Declare lisTeams based on user input ##
-        if intNumberOfTeams <= 4: # Can not create more than 4 teams
-            intNumberOfTeams = 4
-            lisTeams = ['team1', 'team2', 'team3', 'team4']
-        elif intNumberOfTeams == 5:
-            lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5']
-        elif intNumberOfTeams == 6:
-            lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6']
-        elif intNumberOfTeams == 7:
-            lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7']
-        elif intNumberOfTeams == 8:
-            lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8']
-        elif intNumberOfTeams >= 9: # Can not create more than 9 teams
-            intNumberOfTeams = 9
-            lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8', 'team9']
+        ## Check number of teams is greater than 2 and less than 100 ##
+        if intNumberOfTeams < 2:
+            raise MonopolyRunError.NotEnoughTeams()
+        elif intNumberOfTeams >= 100:
+            raise MonopolyRunError.TooManyTeams()
 
+        ## Declare lisTeams based on user input ##
+        lisTeams = []
+        for i in range(intNumberOfTeams):
+            lisTeams.append(f'team{i+1}')
+        
         ## Create Monopoly Run category and role ##
         roleMonopolyRunAdministrator = await ctx.guild.create_role(name='Monopoly Run Administrator')
         catMonopolyRun = await ctx.guild.create_category('Monopoly Run')
 
         ## Create team roles ##
         for strTeam in lisTeams:
-            diRole = await ctx.guild.create_role(name=f"{strTeam}")
+            diRole = await ctx.guild.create_role(name=f'{strTeam}')
             lisRoles.append(diRole) # Append role to lisRoles for setting channel permissions
 
         ## Create announcements channel and set permissions ##
@@ -96,7 +95,7 @@ class claAdministration(commands.Cog):
 
         ## Create team channels and set permissions ##
         for strTeam, strRole in zip(lisTeams, lisRoles): # Loop through both lists at the same time
-            chaChannel = await ctx.guild.create_text_channel(f"{strTeam}", category=catMonopolyRun)
+            chaChannel = await ctx.guild.create_text_channel(f'{strTeam}', category=catMonopolyRun)
             await chaChannel.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
             await chaChannel.set_permissions(strRole, send_messages=False, read_messages=True, view_channel=True)
         
@@ -105,7 +104,7 @@ class claAdministration(commands.Cog):
 
         ## Create guilds table in the database ##
         dbcursor.execute(f"""CREATE OR REPLACE TABLE tbl_{strGuildID} (
-        id varchar(5) NOT NULL PRIMARY KEY,
+        id varchar(6) NOT NULL PRIMARY KEY,
         money smallint(5) NOT NULL,
         current_location TEXT,
         brown1_owner set('Y','N') NOT NULL DEFAULT 'N',
@@ -156,60 +155,49 @@ class claAdministration(commands.Cog):
 
         ## Create records in guilds table  ##
         for strTeam in lisTeams:
-            dbcursor.execute(f"INSERT INTO tbl_{strGuildID} (id, money, current_location) VALUES (%s, %s, %s)", (strTeam, 1500, ''))
+            dbcursor.execute(f"INSERT INTO tbl_{strGuildID} (id, money, current_location) VALUES (?, ?, ?)", (strTeam, 1500, ''))
 
         ## Create a record in tbl_guild ##
-        dbcursor.execute("INSERT INTO tbl_guilds (id, name, questions, teams) VALUES (%s, %s, %s, %s)", (intGuildID, strGuildName, strQuestionSet ,intNumberOfTeams))
+        dbcursor.execute("INSERT INTO tbl_guilds (id, name, questions, teams) VALUES (?, ?, ?, ?)", (intGuildID, strGuildName, strQuestionSet ,intNumberOfTeams))
 
         ## Tell the user setup is complete ##
         await ctx.send('Setup is done!')
-
-    # Error handling #
-    @setup.error
-    async def setup_error(self, ctx, error):
-        if isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(':no_entry: Please specify both the number of teams to create and the question set! ```e.g. &setup 4 test```')
-        elif isinstance(error, commands.MissingPermissions):
-            await ctx.send(':no_entry: You do not have permission to use that command!')
-        elif isinstance(error, commands.BadArgument):
-            await ctx.send(':no_entry: Please enter a valid number of teams to create! ```e.g. &setup 4 test```')
-        else:
-            logging.error(f'Unexpected error: {error}')
-            await ctx.send(f':satellite: An unexpected error occurred! ```The error is: {error}``` ')
 
     ##################
     # Remove Command #
     ##################
 
-    # Command Handling #
     @commands.command()
     @commands.has_guild_permissions(administrator=True)
     async def remove(self, ctx, blnConfirm: bool):
 
         ## Check if blnConfirm is false ##
         if blnConfirm == False:
-            await ctx.send(':no_entry: Please specify true to confirm! ```e.g. &remove true```')
-            return None
-
+           raise commands.BadArgument()
         ## Declare some key variables ##
         strGuildID = str(ctx.guild.id)
 
         ## Check if there is anything to remove ##
-        dbcursor.execute("SELECT id FROM tbl_guilds WHERE id = %s", (strGuildID, ))
+        dbcursor.execute("SELECT id FROM tbl_guilds WHERE id = ?", (strGuildID, ))
         lisExists = dbcursor.fetchall()
         if not lisExists:
-            await ctx.send(':no_entry: No database records exist for this guild or server!')
-            return None
+            raise MonopolyRunError.DatabaseRecordNotFound()
 
         ## Delete all channels in the category Monopoly Run ##
         for category in ctx.message.guild.categories:
-            if "Monopoly Run" in category.name:
+            if 'Monopoly Run' in category.name:
                 for channel in category.text_channels:
                     await channel.delete()
                 await category.delete()
 
+        dbcursor.execute("SELECT teams FROM tbl_guilds WHERE id = ?", (strGuildID, ))
+        lisNumberOfTeams = dbcursor.fetchall()
+        tupNumberOfTeams = lisNumberOfTeams[0]
+        intNumberOfTeams = tupNumberOfTeams[0]
         ## Declare a list of roles to try and delete ##
-        lisRoles = ['Monopoly Run Administrator', 'team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8', 'team9']
+        lisRoles = ['Monopoly Run Administrator']
+        for i in range(intNumberOfTeams):
+            lisRoles.append(f'team{i+1}')
 
         ## Delete roles ##
         for role in ctx.guild.roles:
@@ -220,26 +208,13 @@ class claAdministration(commands.Cog):
         dbcursor.execute(f"DROP TABLE tbl_{strGuildID}")
 
         ## Remove record from tbl_guild ##
-        dbcursor.execute("DELETE FROM tbl_guilds WHERE id = %s", (strGuildID, ))
+        dbcursor.execute("DELETE FROM tbl_guilds WHERE id = ?", (strGuildID, ))
 
-    # Error Handling #
-    @remove.error
-    async def remove_error(self, ctx, error):
-        if isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(':no_entry: Please specify true or false to confirm! ```e.g. &remove true```')
-        elif isinstance(error, commands.MissingPermissions):
-            await ctx.send(':no_entry: You do not have permission to use that command!')
-        elif isinstance(error, commands.BadArgument):
-            await ctx.send(':no_entry: Please specify true or false to confirm! ```e.g. &remove true```')
-        else:
-            logging.error(f'Unexpected error: {error}')
-            await ctx.send(f':satellite: An unexpected error occurred! ```The error is: {error}``` ')
 
     ####################
     # Add Team Command #
     ####################
 
-    # Command Handling #
     @commands.command()
     @commands.has_guild_permissions(administrator=True)
     async def add(self, ctx):
@@ -248,72 +223,61 @@ class claAdministration(commands.Cog):
         strGuildID = str(ctx.guild.id)
 
         ## Check if there is anything to add to ##
-        dbcursor.execute(f"SELECT teams from tbl_guilds WHERE id = %s", (strGuildID, ))
+        dbcursor.execute(f"SELECT teams from tbl_guilds WHERE id = ?", (strGuildID, ))
         lisNumberOfTeams = dbcursor.fetchall()
         if not lisNumberOfTeams:
-            await ctx.send(':no_entry: No database records exist for this guild or server!')
-            return None
+            raise MonopolyRunError.DatabaseRecordNotFound()
 
         ## Get the number of teams the guild currently has ##
         tupNumberOfTeams = lisNumberOfTeams[0]
         intNumberOfTeams = tupNumberOfTeams[0]
-        intUpdatedNumberOfTeams = intNumberOfTeams
 
-        ## Check if its above 10 ##
-        if intUpdatedNumberOfTeams + 1 == 10:
-            await ctx.send(':no_entry: Max number of teams is 9!')
-            return None
+        ## Handle max number of teams ##
+        if intNumberOfTeams == 99:
+            raise MonopolyRunError.TooManyTeams()
 
         ## Get the Monopoly Run Category ##
-        for category in ctx.guild.categories:
-            if "Monopoly Run" in category.name:
-                catMonopolyRun = category
+        catMonopolyRun = utils.get(ctx.guild.categories, name='Monopoly Run')
 
-        ## Declare a list of teams ##
-        lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8', 'team9']
-
+        ## Define a variable with the new team to add ##
+        strNewTeamName = f'team{intNumberOfTeams + 1}'
+        
         ## Create team Role ##
-        rolTeam = await ctx.guild.create_role(name=lisTeams[intUpdatedNumberOfTeams])
+        roleNewTeam = await ctx.guild.create_role(name=strNewTeamName)
+
+        ## Get Monopoly Run Administrator Role ##
+        roleMonopolyRunAdministrator = utils.get(ctx.guild.roles, name='Monopoly Run Administrator')
 
         ## Create team channel and set permissions  ##
-        chaChannel = await ctx.guild.create_text_channel(lisTeams[intUpdatedNumberOfTeams], category=catMonopolyRun)
+        chaChannel = await ctx.guild.create_text_channel(strNewTeamName, category=catMonopolyRun)
         await chaChannel.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
-        await chaChannel.set_permissions(rolTeam, send_messages=False, read_messages=True, view_channel=True)
-
+        await chaChannel.set_permissions(roleNewTeam, send_messages=False, read_messages=True, view_channel=True)
+        await chaChannel.set_permissions(roleMonopolyRunAdministrator, send_messages=True, read_messages=True, view_channel=True)
+        
         ## Add team record to guilds table ##
-        dbcursor.execute(f"INSERT INTO tbl_{strGuildID} (id, money, current_location) VALUES (%s, %s, %s)", (lisTeams[intUpdatedNumberOfTeams], 1500, ''))
+        dbcursor.execute(f"INSERT INTO tbl_{strGuildID} (id, money, current_location) VALUES (?, ?, ?)", (strNewTeamName, 1500, ''))
 
         ## Update number of teams in guild table ##
-        dbcursor.execute(f"UPDATE tbl_guilds SET teams = %s WHERE id = %s", (intUpdatedNumberOfTeams + 1, strGuildID))
+        dbcursor.execute(f"UPDATE tbl_guilds SET teams = ? WHERE id = ?", (intNumberOfTeams + 1, strGuildID))
 
-    # Error Handling #
-    @add.error
-    async def add_error(self, ctx, error):
-        if isinstance(error, commands.MissingPermissions):
-            await ctx.send(':no_entry: You do not have permission to use that command!')
-        else:
-            logging.error(f'Unexpected error: {error}')
-            await ctx.send(f':satellite: An unexpected error occurred! ```The error is: {error}``` ')
 
     ######################
     # Start Game Command #
     ######################
 
-    # Command Handling #
     @commands.command()
     @commands.has_guild_permissions(administrator=True)
     async def start(self, ctx):
 
         ## Declare some key variables ##
         strGuildID = str(ctx.guild.id)
-        catMonopolyRun = utils.get(ctx.guild.categories, name="Monopoly Run")
+        catMonopolyRun = utils.get(ctx.guild.categories, name='Monopoly Run')
 
         ## Check if there is anything to add to ##
-        dbcursor.execute(f"SELECT teams from tbl_guilds WHERE id = %s", (strGuildID, ))
+        dbcursor.execute(f"SELECT teams from tbl_guilds WHERE id = ?", (strGuildID, ))
         lisNumberOfTeams = dbcursor.fetchall()
         if not lisNumberOfTeams:
-            await ctx.send(':no_entry: No database records exist for this guild or server!')
-            return None
+            raise MonopolyRunError.DatabaseRecordNotFound()
 
         ## Start UpdatePropertiesChannel Loop and UpdateLeaderBoard Loop ##
         self.UpdatePropertiesChannel.start(self, ctx)
@@ -323,60 +287,38 @@ class claAdministration(commands.Cog):
         tupNumberOfTeams = lisNumberOfTeams[0]
         intNumberOfTeams = tupNumberOfTeams[0]
 
-        ## Create a list of teams depending on how many teams the guild currently has ##
-        if intNumberOfTeams <= 4: # Can not create more than 4 teams
-            intNumberOfTeams = 4
-            lisTeams = ['team1', 'team2', 'team3', 'team4']
-        elif intNumberOfTeams == 5:
-            lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5']
-        elif intNumberOfTeams == 6:
-            lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6']
-        elif intNumberOfTeams == 7:
-            lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7']
-        elif intNumberOfTeams == 8:
-            lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8']
-        elif intNumberOfTeams >= 9: # Can not create more than 9 teams
-            intNumberOfTeams = 9
-            lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8', 'team9']
+        ## Declare lisTeams based on number of teams ##
+        lisTeams = []
+        for i in range(intNumberOfTeams):
+            lisTeams.append(f'team{i+1}')
 
         ## Update send permissions on team channels ##
         for strTeam in lisTeams:
-            rolTeam = utils.get(ctx.guild.roles, name=f"{strTeam}")
-            chaTeam = utils.get(ctx.guild.channels, name=f"{strTeam}")
+            rolTeam = utils.get(ctx.guild.roles, name=f'{strTeam}')
+            chaTeam = utils.get(ctx.guild.channels, name=f'{strTeam}')
             await chaTeam.set_permissions(rolTeam, send_messages=True, view_channel=True)
 
         ## Get Announcement Channel and send a message ##
-        chaAnnouncementChannel = utils.get(ctx.guild.channels, name="announcements", category_id=catMonopolyRun.id)
+        chaAnnouncementChannel = utils.get(ctx.guild.channels, name='announcements', category_id=catMonopolyRun.id)
         await chaAnnouncementChannel.send('Game Start!')
 
-    # Error Handling #
-    @start.error
-    async def start_error(self, ctx, error):
-        if isinstance(error, commands.MissingPermissions):
-            await ctx.send(':no_entry: You do not have permission to use that command!')
-        else:
-            logging.error(f'Unexpected error: {error}')
-            await ctx.send(f':satellite: An unexpected error occurred! ```The error is: {error}``` ')
+    #####################
+    # Stop Game Command #
+    #####################
 
-    ####################
-    # Start Game Command #
-    ####################
-
-    # Command Handling #
     @commands.command()
     @commands.has_guild_permissions(administrator=True)
     async def stop(self, ctx):
 
         ## Declare some key variables ##
         strGuildID = str(ctx.guild.id)
-        catMonopolyRun = utils.get(ctx.guild.categories, name="Monopoly Run")
+        catMonopolyRun = utils.get(ctx.guild.categories, name='Monopoly Run')
 
         ## Check if there is anything to add to ##
-        dbcursor.execute(f"SELECT teams from tbl_guilds WHERE id = %s", (strGuildID, ))
+        dbcursor.execute(f"SELECT teams from tbl_guilds WHERE id = ?", (strGuildID, ))
         lisNumberOfTeams = dbcursor.fetchall()
         if not lisNumberOfTeams:
-            await ctx.send(':no_entry: No database records exist for this guild or server!')
-            return None
+            raise MonopolyRunError.DatabaseRecordNotFound()
 
         claAdministration.UpdatePropertiesChannel.stop()
         claAdministration.UpdateLeaderBoard.stop()
@@ -385,40 +327,20 @@ class claAdministration(commands.Cog):
         tupNumberOfTeams = lisNumberOfTeams[0]
         intNumberOfTeams = tupNumberOfTeams[0]
 
-        ## Create a list of teams depending on how many teams the guild currently has ##
-        if intNumberOfTeams <= 4: # Can not create more than 4 teams
-            intNumberOfTeams = 4
-            lisTeams = ['team1', 'team2', 'team3', 'team4']
-        elif intNumberOfTeams == 5:
-            lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5']
-        elif intNumberOfTeams == 6:
-            lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6']
-        elif intNumberOfTeams == 7:
-            lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7']
-        elif intNumberOfTeams == 8:
-            lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8']
-        elif intNumberOfTeams >= 9: # Can not create more than 9 teams
-            intNumberOfTeams = 9
-            lisTeams = ['team1', 'team2', 'team3', 'team4', 'team5', 'team6', 'team7', 'team8', 'team9']
+        ## Declare lisTeams based on number of teams ##
+        lisTeams = []
+        for i in range(intNumberOfTeams):
+            lisTeams.append(f'team{i+1}')
 
         ## Update send permissions on team channels ##
         for strTeam in lisTeams:
-            rolTeam = utils.get(ctx.guild.roles, name=f"{strTeam}")
-            chaTeam = utils.get(ctx.guild.channels, name=f"{strTeam}")
+            rolTeam = utils.get(ctx.guild.roles, name=f'{strTeam}')
+            chaTeam = utils.get(ctx.guild.channels, name=f'{strTea}')
             await chaTeam.set_permissions(rolTeam, send_messages=False)
 
         ## Get Announcement Channel and send a message ##
-        chaAnnouncementChannel = utils.get(ctx.guild.channels, name="announcements", category_id=catMonopolyRun.id)
+        chaAnnouncementChannel = utils.get(ctx.guild.channels, name='announcements', category_id=catMonopolyRun.id)
         await chaAnnouncementChannel.send(f'Game Over!')
-
-    # Error Handling #
-    @start.error
-    async def end_error(self, ctx, error):
-        if isinstance(error, commands.MissingPermissions):
-            await ctx.send(':no_entry: You do not have permission to use that command!')
-        else:
-            logging.error(f'Unexpected error: {error}')
-            await ctx.send(f':satellite: An unexpected error occurred! ```The error is: {error}``` ')
 
     #############################
     # Update Properties Channel #
@@ -430,7 +352,7 @@ class claAdministration(commands.Cog):
         strGuildID = str(ctx.guild.id)
 
         ## Get which set of Questions the guild is using ##
-        dbcursor.execute("SELECT questions FROM tbl_guilds WHERE id = %s", (strGuildID, ))
+        dbcursor.execute("SELECT questions FROM tbl_guilds WHERE id = ?", (strGuildID, ))
         lisQuestions = dbcursor.fetchall()
         tupQuestions = lisQuestions[0]
         strQuestions = tupQuestions[0]
@@ -460,26 +382,26 @@ class claAdministration(commands.Cog):
                 strOwner = tupOwner[0]
 
             ## Add fields to Embed ##
-            if re.sub('[0-9]+', '', item[0]) == "brown":
-                emBrownProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}")
-            elif re.sub('[0-9]+', '', item[0]) == "lightblue":
-                emLightBlueProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]}  \n Owner: {strOwner}")
-            elif re.sub('[0-9]+', '', item[0]) == "pink":
-                emPinkProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}")
-            elif re.sub('[0-9]+', '', item[0]) == "orange":
-                emOrangeProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}")
-            elif re.sub('[0-9]+', '', item[0]) == "red":
-                emRedProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}")
-            elif re.sub('[0-9]+', '', item[0]) == "yellow":
-                emYellowProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}")
-            elif re.sub('[0-9]+', '', item[0]) == "green":
-                emGreenProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}")
-            elif re.sub('[0-9]+', '', item[0]) == "darkblue":
-                emDarkBlueProperties.add_field(name=item[2], value=f"ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}")
+            if re.sub('[0-9]+', '', item[0]) == 'brown':
+                emBrownProperties.add_field(name=item[2], value=f'ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}')
+            elif re.sub('[0-9]+', '', item[0]) == 'lightblue':
+                emLightBlueProperties.add_field(name=item[2], value=f'ID: {item[0]} \n Value: {item[1]}  \n Owner: {strOwner}')
+            elif re.sub('[0-9]+', '', item[0]) == 'pink':
+                emPinkProperties.add_field(name=item[2], value=f'ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}')
+            elif re.sub('[0-9]+', '', item[0]) == 'orange':
+                emOrangeProperties.add_field(name=item[2], value=f'ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}')
+            elif re.sub('[0-9]+', '', item[0]) == 'red':
+                emRedProperties.add_field(name=item[2], value=f'ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}')
+            elif re.sub('[0-9]+', '', item[0]) == 'yellow':
+                emYellowProperties.add_field(name=item[2], value=f'ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}')
+            elif re.sub('[0-9]+', '', item[0]) == 'green':
+                emGreenProperties.add_field(name=item[2], value=f'ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}')
+            elif re.sub('[0-9]+', '', item[0]) == 'darkblue':
+                emDarkBlueProperties.add_field(name=item[2], value=f'ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}')
 
         ## Get the properties channel ##
-        catMonopolyRun = utils.get(ctx.guild.categories, name="Monopoly Run")
-        chaProperties = utils.get(ctx.guild.channels, name="properties", category_id=catMonopolyRun.id)
+        catMonopolyRun = utils.get(ctx.guild.categories, name='Monopoly Run')
+        chaProperties = utils.get(ctx.guild.channels, name='properties', category_id=catMonopolyRun.id)
 
         ## Remove last message ##
         await chaProperties.purge(limit=10)
@@ -511,16 +433,56 @@ class claAdministration(commands.Cog):
         for item in lisLeaderBoard:
 
             # Add to embed #
-            emLeaderBoard.add_field(name=f"{i}. {item[0]}", value=f"Money: {item[1]}", inline=False)
+            emLeaderBoard.add_field(name=f'{i}. {item[0]}', value=f'Money: {item[1]}', inline=False)
             i = i + 1
 
         ## Get the properties channel ##
-        catMonopolyRun = utils.get(ctx.guild.categories, name="Monopoly Run")
-        chaLeaderBoard = utils.get(ctx.guild.channels, name="leaderboard", category_id=catMonopolyRun.id)
+        catMonopolyRun = utils.get(ctx.guild.categories, name='Monopoly Run')
+        chaLeaderBoard = utils.get(ctx.guild.channels, name='leaderboard', category_id=catMonopolyRun.id)
 
         ## Remove last message ##
         await chaLeaderBoard.purge(limit=2)
 
         ## Send the embed ##
         await chaLeaderBoard.send(embed = emLeaderBoard)
+    
+    ##################
+    # Error Handling #
+    ##################
+
+    async def cog_command_error (self, ctx, error):
+        # Missing Required Argument #
+        if isinstance(error, commands.MissingRequiredArgument):
+            if ctx.command.name == 'setup':
+                await ctx.send(f':no_entry: Please specify both the number of teams to create and the question set! ```e.g. mr {ctx.command} 4 test```')
+            elif ctx.command.name == 'remove':
+                await ctx.send(f':no_entry: Please enter true to confim removal! ```e.g. mr {ctx.command} true```')
+
+        # Missing Permissons #
+        elif isinstance(error, commands.MissingPermissions):
+            await ctx.send(':no_entry: You do not have permission to use that command!')
+        elif isinstance(error, commands.BadArgument):
+            if ctx.command.name == 'setup':
+                await ctx.send(f':no_entry: Please enter a valid number of teams to create! ```e.g. mr {ctx.command} 4 test```')
+            elif ctx.command.name == 'remove':
+                await ctx.send(f':no_entry: Please enter true to confim removal! ```e.g. mr {ctx.command} true```')
         
+        # Database recoreds not found #
+        elif isinstance(error, MonopolyRunError.DatabaseRecordNotFound):
+            await ctx.send(':no_entry: No database records were found for this sever! Have you run setup?')
+
+        # Too many teams #
+        elif isinstance(error,MonopolyRunError.TooManyTeams):
+            if ctx.command.name == 'add':
+                await ctx.send(':no_entry: You can not create any teams as you will be over the maxium allowed amount of teams!')
+            else:
+                await ctx.send(':no_entry: Maxium amount of teams is 99!')
+        
+        # Not enough teams #
+        elif isinstance(error,MonopolyRunError.NotEnoughTeams):
+            await ctx.send(':no_entry: Minium amount of teams is 2!')
+
+        # Any other error #
+        else:
+            logging.error(f'Unexpected error: {error}')
+            await ctx.send(f':satellite: An unexpected error occurred! ```The error is: {error}``` ')

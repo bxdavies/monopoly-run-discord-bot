@@ -24,13 +24,13 @@ if not strLoggingLocation:
 else:
     ### Check Directory exits ###
     if os.path.isdir(strLoggingLocation) == True:
-        strLoggingLocation = strLoggingLocation + '/Monopoly-Run-bot.log'
+        strLoggingLocation = strLoggingLocation + 'Monopoly-Run-bot.log'
 
     ### Create Directory is not exits ###
     else:
         try:
             os.mkdir(strLoggingLocation)
-            strLoggingLocation = strLoggingLocation + '/Monopoly-Run-bot.log'
+            strLoggingLocation = strLoggingLocation + 'Monopoly-Run-bot.log'
         except PermissionError:
             print(f'CRITICAL Please check {getpass.getuser()} has read/write access to {strLoggingLocation}')
             sys.exit(1)
@@ -43,9 +43,10 @@ else:
 #################
 try:
     logging.basicConfig(filename=strLoggingLocation,
-    level=logging.WARNING,
+    level = getattr(logging, os.getenv('LOG_LEVEL').upper()),
     format="%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s ", datefmt='%d-%b-%y %H:%M:%S')
     logger = logging.getLogger(__name__)
+    logging.info('Log File Created')
 
 except PermissionError:
     print(f'CRITICAL Please check {getpass.getuser()} has read/write access to {strLoggingLocation}')

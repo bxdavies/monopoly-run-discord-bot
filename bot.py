@@ -35,7 +35,7 @@ bot.add_cog(claGame(bot))
 
 @bot.event
 async def on_ready():
-    logging.info('Reloading the bot!')
+    logging.info('Reloading / Starting the bot!')
 
     
 
@@ -46,7 +46,9 @@ async def on_guild_join(guild):
             await channel.send('I will send this message when I join a server')
         break
 
-
+@bot.event
+async def on_command_error(ctx, error):
+    print(error)
 #######
 # Run #
 #######

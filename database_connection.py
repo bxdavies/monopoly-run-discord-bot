@@ -1,7 +1,7 @@
 ##################
 # Import Modules #
 ##################
-import mysql.connector
+import mariadb
 from dotenv import load_dotenv
 import os
 from logging_setup import logger
@@ -17,7 +17,7 @@ load_dotenv()
 #######################
 # Try and Connect to the database if fails exit program #
 try:
-    dbconnection = mysql.connector.connect(
+    dbconnection = mariadb.connect(
         user=os.getenv("USER"),
         password=os.getenv("PASSWORD"),
         host=os.getenv("HOST"),
