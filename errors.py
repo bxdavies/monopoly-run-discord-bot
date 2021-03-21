@@ -37,3 +37,11 @@ class NotEnoughTeams(MonopolyRunError):
 
 class DatabaseRecordNotFound(MonopolyRunError):
     pass
+
+
+class MonopolyRunAdministratorRoleNotFound(MonopolyRunError):
+    pass
+
+
+class DatabaseTableNotFound(MonopolyRunError):
+    pass

@@ -51,24 +51,24 @@ class claGame(commands.Cog):
 
         return utils.get(ctx.author.roles, name=next(filter(r.match, lismyRoles)))
 
-    # Return the highest number #
-    def funHighestNumber(intNumber1, intNumber2):
-        if intNumber1 > intNumber2:
-            return intNumber1
-        else:
-            return intNumber2
-
     ##################
     # Command Checks #
     ##################
 
     # Check if command is being used in a team channel #
     def funRoleChannelCheck():
-        def predicate(ctx):
+        async def predicate(ctx):
 
             # Check if command is being used in a DM #
             if ctx.channel.type is ChannelType.private:
                 raise commands.NoPrivateMessage
+
+            # Check if guild is setup #
+            strGuildID = str(ctx.guild.id)
+            dbcursor.execute("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'monopolyrun' AND TABLE_NAME = ?", (f'tbl_{strGuildID}', ))
+            lisGuildTable = dbcursor.fetchall()
+            if not lisGuildTable:
+                raise MonopolyRunError.DatabaseTableNotFound
 
             # Check if the user has a team role #
             lismyRoles = [r.name for r in ctx.author.roles]
@@ -122,7 +122,7 @@ class claGame(commands.Cog):
         strQuestions = tupQuestions[0]
 
         # Get Location and Question from the Database #
-        dbcursor.execute(f"SELECT location, question FROM tbl_{strQuestions} WHERE id = ?" (strProperty, ))
+        dbcursor.execute(f"SELECT location, question FROM tbl_{strQuestions} WHERE id = ?", (strProperty, ))
         lisLocationQuestion = dbcursor.fetchall()
         for item in lisLocationQuestion:
             strPropertyLocation = item[0]
@@ -154,10 +154,7 @@ class claGame(commands.Cog):
         # Check if team has said they are going to visit the property #
         if strCurrentLocation not in self.lisProperties:
             if strCurrentLocation == '':
-                await ctx.send(':tophat: You need to use goto first to tell the game where your going! ```&goto brown1```')
-                return None
-            else:
-                await ctx.send(f':tophat: You need to attempt the question at: {strCurrentLocation}, first!')
+                await ctx.send(':tophat: You need to use goto first to tell the game where your going! ```mr goto brown1```')
                 return None
 
         # Set property to location #
@@ -290,12 +287,12 @@ class claGame(commands.Cog):
 
         # Answer is incorrect AND the property is NOT owned #
         elif blnAnswerCorrect is False and strOwner is None and blnDoubleRent is False:
-            await ctx.send(f':negative_squared_cross_mark: Try again! You were {claGame.funHighestNumber(intPartialRatio, intTokenSetRatio)}% correct!')
+            await ctx.send(':negative_squared_cross_mark: Try again!')
 
-        # Answer is incorrect AND the property is owned AND the team can afford rent #
+        # Answer is incorrect AND the property is owned  #
         elif blnAnswerCorrect is False and strOwner is not None and blnDoubleRent is False:
 
-            await ctx.send(f':negative_squared_cross_mark: Try again! You were {claGame.funHighestNumber(intPartialRatio, intTokenSetRatio)}% correct! However since: {strOwner} already owns that property you paid: £{intValue} in rent!')
+            await ctx.send(f':negative_squared_cross_mark: Try again! However since: {strOwner} already owns that property you paid: £{intValue} in rent!')
 
             # Update owners money #
             chaOwner = utils.get(ctx.guild.channels, name=strOwner)
@@ -303,14 +300,14 @@ class claGame(commands.Cog):
             intUpdatedMoney = intTeamsMoney + intValue
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strOwner))
 
-        # Answer is incorrect AND the property is owned AND double rent AND the team can afford rent #
+        # Answer is incorrect AND the property is owned AND double rent  #
         elif blnAnswerCorrect is False and strOwner is not None and blnDoubleRent is True:
 
-            await ctx.send(f':negative_squared_cross_mark: Try again! You were {claGame.funHighestNumber(intPartialRatio, intTokenSetRatio)}% correct! However since: {strOwner} already owns that property and the other properties in the same group you paid: £{intValue*2} in rent!')
+            await ctx.send(f':negative_squared_cross_mark: Try again! However since: {strOwner} already owns that property and the other properties in the same group you paid: £{intValue*2} in rent!')
 
             # Update owners money #
             chaOwner = utils.get(ctx.guild.channels, name=strOwner)
-            await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue} on {strProperty}, even though they got the answer incorrect!')
+            await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue * 2} on {strProperty}, even though they got the answer incorrect!')
             intUpdatedMoney = intTeamsMoney + (intValue * 2)
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strOwner))
 
@@ -378,12 +375,9 @@ class claGame(commands.Cog):
 
         # Missing Required Argument #
         elif isinstance(error, commands.MissingRequiredArgument):
-            if ctx.command.name == 'goto' or ctx.command.name == 'owner':
-                await ctx.send(f':no_entry: You need to specify the property! e.g. ```mr {ctx.command.name} brown1```')
-            elif ctx.command.name == 'answer':
-                await ctx.send(f':no_entry: You need to specify the answer! e.g. ```mr {ctx.command.name} hello world```')
-            else:
-                await ctx.send(':no_entry: That command is missing a required argument!')
+            if ctx.command.name == 'answer':
+                await ctx.send(f':no_entry: You need to specify a answer! ```mr {ctx.command.name} hello world```')
+            await ctx.send(f':no_entry: You need to specify the property! e.g. ```mr {ctx.command.name} brown1```')
 
         # No Private Message #
         elif isinstance(error, commands.NoPrivateMessage):
@@ -393,9 +387,17 @@ class claGame(commands.Cog):
         elif isinstance(error, MonopolyRunError.InvalidPropertyName):
             await ctx.send(f':no_entry: Please enter a valid property! e.g. ```mr {ctx.command.name} brown1``` For a list of properties see the properties channel!')
 
+        # Not In Team Channel #
+        elif isinstance(error, MonopolyRunError.NotInTeamChannel):
+            await ctx.send(':no_entry: Please make sure you have the correct role for the correct team channel! e.g.```role team1 for channel team1```')
+
         # Already visited #
         elif isinstance(error, MonopolyRunError.AlreadyVisted):
             await ctx.send(':no_entry: You have already answered the question for that property correctly!')
+
+        # Database Table Not Found #
+        elif isinstance(error, MonopolyRunError.DatabaseTableNotFound):
+            await ctx.send(':no_entry: No table was found in the database for this Server! Have you run setup?')
 
         # Any other error #
         else:

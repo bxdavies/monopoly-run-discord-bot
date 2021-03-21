@@ -47,7 +47,8 @@ async def on_guild_join(guild):
 
 @bot.event
 async def on_command_error(ctx, error):
-    print(error)
+    if isinstance(error, commands.CommandNotFound):
+        await ctx.send(':no_entry: That command does not exist!')
 
 
 #######

@@ -18,17 +18,17 @@ import errors as MonopolyRunError
 ###############
 class claAdministration(commands.Cog):
 
-    ##########
+    ####################
     # Initialize Class #
-    ##########
+    ####################
     def __init__(self, bot):
         self.bot = bot
         self.UpdatePropertiesChannel = claAdministration.UpdatePropertiesChannel
         self.UpdateLeaderBoard = claAdministration.UpdateLeaderBoard
 
-    #########
+    #################
     # Setup Command #
-    #########
+    #################
 
     @commands.command()
     @commands.has_guild_permissions(administrator=True)
@@ -87,18 +87,26 @@ class claAdministration(commands.Cog):
         chaProperties = await ctx.guild.create_text_channel('properties', category=catMonopolyRun)
         await chaProperties.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
 
-        # Create Help channel and set permissions #
-        chaHelp = await ctx.guild.create_text_channel('Help', category=catMonopolyRun)
+        # Create help channel and set permissions #
+        chaHelp = await ctx.guild.create_text_channel('help', category=catMonopolyRun)
         await chaHelp.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
         msg = await chaHelp.send('If you need help click the 👍 button below...')
         await msg.add_reaction('👍')
 
+        # Allow teams to view the announcements, leaderboard, properties and help channels #
+        for roleTeam in lisRoles:
+            for category in ctx.message.guild.categories:
+                if 'Monopoly Run' in category.name:
+                    for channel in category.text_channels:
+                        await channel.set_permissions(roleTeam, send_messages=False, read_messages=True, view_channel=True)
+
         # Create team channels and set permissions #
-        for strTeam, strRole in zip(lisTeams, lisRoles):  # Loop through both lists at the same time
+        for strTeam, roleTeam in zip(lisTeams, lisRoles):  # Loop through both lists at the same time
             chaChannel = await ctx.guild.create_text_channel(f'{strTeam}', category=catMonopolyRun)
             await chaChannel.set_permissions(ctx.guild.default_role, send_messages=False, read_messages=False)
-            await chaChannel.set_permissions(strRole, send_messages=False, read_messages=True, view_channel=True)
+            await chaChannel.set_permissions(roleTeam, send_messages=False, read_messages=True, view_channel=True)
 
+        # Allow monopoly run administrators to view and send messages in all channels #
         for chaChannel in catMonopolyRun.channels:
             await chaChannel.set_permissions(roleMonopolyRunAdministrator, send_messages=True, read_messages=True, view_channel=True)
 
@@ -169,6 +177,7 @@ class claAdministration(commands.Cog):
 
     @commands.command()
     @commands.has_guild_permissions(administrator=True)
+    @commands.has_role('Monopoly Run Administrator')
     async def remove(self, ctx, blnConfirm: bool):
 
         # Check if blnConfirm is false #
@@ -215,7 +224,7 @@ class claAdministration(commands.Cog):
     # Add Team Command #
     ####################
     @commands.command()
-    @commands.has_guild_permissions(administrator=True)
+    @commands.has_role('Monopoly Run Administrator')
     async def add(self, ctx):
 
         # Declare some key variables #
@@ -263,7 +272,7 @@ class claAdministration(commands.Cog):
     # Start Game Command #
     ######################
     @commands.command()
-    @commands.has_guild_permissions(administrator=True)
+    @commands.has_role('Monopoly Run Administrator')
     async def start(self, ctx):
 
         # Declare some key variables #
@@ -299,12 +308,12 @@ class claAdministration(commands.Cog):
         chaAnnouncementChannel = utils.get(ctx.guild.channels, name='announcements', category_id=catMonopolyRun.id)
         await chaAnnouncementChannel.send('Game Start!')
 
-    ###########
+    #####################
     # Stop Game Command #
-    ###########
+    #####################
 
     @commands.command()
-    @commands.has_guild_permissions(administrator=True)
+    @commands.has_role('Monopoly Run Administrator')
     async def stop(self, ctx):
 
         # Declare some key variables #
@@ -339,9 +348,9 @@ class claAdministration(commands.Cog):
         chaAnnouncementChannel = utils.get(ctx.guild.channels, name='announcements', category_id=catMonopolyRun.id)
         await chaAnnouncementChannel.send('Game Over!')
 
-    ###############
+    #############################
     # Update Properties Channel #
-    ###############
+    #############################
     @tasks.loop(minutes=2, count=None)
     async def UpdatePropertiesChannel(self, ctx):
 
@@ -484,12 +493,17 @@ class claAdministration(commands.Cog):
         # Missing Permissions #
         elif isinstance(error, commands.MissingPermissions):
             await ctx.send(':no_entry: You do not have permission to use that command!')
+
+        # Bad Argument #
         elif isinstance(error, commands.BadArgument):
             if ctx.command.name == 'setup':
                 await ctx.send(f':no_entry: Please enter a valid number of teams to create! ```e.g. mr {ctx.command} 4 test```')
             elif ctx.command.name == 'remove':
                 await ctx.send(f':no_entry: Please enter true to confirm removal! ```e.g. mr {ctx.command} true```')
 
+        # Missing Role #
+        elif isinstance(error, commands.MissingRole):
+            await ctx.send(':no_entry: You need the Monopoly Run Administrator role to use that command!')
         # Database records not found #
         elif isinstance(error, MonopolyRunError.DatabaseRecordNotFound):
             await ctx.send(':no_entry: No database records were found for this sever! Have you run setup?')
@@ -504,6 +518,10 @@ class claAdministration(commands.Cog):
         # Not enough teams #
         elif isinstance(error, MonopolyRunError.NotEnoughTeams):
             await ctx.send(':no_entry: Minimum amount of teams is 2!')
+
+        # No Private Message #
+        elif isinstance(error, commands.NoPrivateMessage):
+            await ctx.author.send(':no_entry: Please use all commands in a Server (Not Direct Messages)!')
 
         # Any other error #
         else:

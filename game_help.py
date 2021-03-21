@@ -9,6 +9,7 @@ import re
 # Import External Classes #
 ###########################
 from logging_setup import logging
+import errors as MonopolyRunError
 
 
 ##############
@@ -28,13 +29,12 @@ class claHelp(commands.Cog):
     #############
 
     # Return users team role #
-    async def funTeamRole(member, message):
+    async def funTeamRole(member):
         lismyRoles = [r.name for r in member.roles]
         lismyRoles.reverse()
         r = re.compile("team.*")
         if not list(filter(r.match, lismyRoles)):
-            await message.remove_reaction('👍', member)
-            raise commands.MissingRole("team?")
+            return None
 
         return utils.get(member.roles, name=next(filter(r.match, lismyRoles)))
 
@@ -132,13 +132,31 @@ class claHelp(commands.Cog):
         message = await channel.fetch_message(payload.message_id)
         emoji = payload.emoji
 
+        # Get the monopoly run administrator role #
         roleMonopolyRunAdministrator = utils.get(member.guild.roles, name='Monopoly Run Administrator')
+        try:
+            if roleMonopolyRunAdministrator is None:
+                raise MonopolyRunError.MonopolyRunAdministratorRoleNotFound()
+        except MonopolyRunError.MonopolyRunAdministratorRoleNotFound:
+            await member.send(':no_entry: The Monopoly Run Administrator role was not found! Have you run setup?')
+            await message.remove_reaction('👍', member)
+            return None
+
         # If reaction is is added to the help message in the help channel #
         if emoji.name == '👍' and channel.name == 'help' and message.content == 'If you need help click the 👍 button below...':
 
             # Gather some info from message #
-            roleMonopolyRunAdministrator = utils.get(member.guild.roles, name='Monopoly Run Administrator')
-            roleTeam = await self.funTeamRole(member, message)
+            roleTeam = await self.funTeamRole(member)
+
+            # Handle errors #
+            try:
+                if roleTeam is None:
+                    raise commands.RoleNotFound("team?")
+
+            except commands.RoleNotFound:
+                await member.send(':no_entry: You must have a team role! For example role: team1')
+                await message.remove_reaction('👍', member)
+                return None
 
             # Check Team and Monopoly Run Administrator Roles exist #
             if roleMonopolyRunAdministrator is None:
@@ -151,7 +169,7 @@ class claHelp(commands.Cog):
             await message.remove_reaction('👍', member)
 
         # If reaction is added to the the message saying x team needs help delete the message #
-        elif emoji.name == '👍' and channel.name == 'help' and message.author.id == 787347113188917270 and roleMonopolyRunAdministrator.name == 'Monopoly Run Administrator':
+        elif emoji.name == '👍' and channel.name == 'help' and message.author.id == 787347113188917270:
             await message.delete()
 
     ##################
@@ -164,7 +182,7 @@ class claHelp(commands.Cog):
             await ctx.send(':no_entry: You must have a team role! For example role: team1')
 
         # No Private Message #
-        elif isinstance(error, commands.NoPrivateMessage):
+        if isinstance(error, commands.NoPrivateMessage):
             await ctx.author.send(':no_entry: Please use all commands in a Server (Not Direct Messages)!')
 
         # Any other error #
