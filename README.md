@@ -2,7 +2,7 @@
 [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
 [![Maintainability](https://api.codeclimate.com/v1/badges/0b3a1292f8224e543943/maintainability)](https://codeclimate.com/github/bxdavies/Monoply-Run-Discord-Bot/maintainability)
 [![CodeFactor](https://www.codefactor.io/repository/github/bxdavies/monoply-run-discord-bot/badge/main)](https://www.codefactor.io/repository/github/bxdavies/monoply-run-discord-bot/overview/main)
-![https://pyup.io/repos/github/bxdavies/Monoply-Run-Discord-Bot/shield.svg](https://pyup.io/repos/github/bxdavies/Monoply-Run-Discord-Bot/shield.svg)
+[![Updates](https://pyup.io/repos/github/bxdavies/monoply-run-discord-bot/shield.svg)](https://pyup.io/repos/github/bxdavies/monoply-run-discord-bot/)
 
 A game based on the Scout and Girlguide event [Monoply Run](https://monopoly-run.co.uk/). The game works similar to the real world game in which a team visits a property and answers a question at the property. If they are the first one to answer the question correctly they own the property if they are not then they pay rent to the owner.
 
@@ -94,14 +94,9 @@ A Comment surrounded by comments represents that the code is now doing something
 # Info Here #
 #############
 ```
-And then from there onwards you should follow the Markdown Heading hierarchy:
-
+And then any other comments should be standard like so: 
 ```
-# Comment 1
-## Comment 2
-### Comment 3
-#### Comment 4
-##### Comment 5
+# Comment Here #
 ```
 
 #### Badges ####
