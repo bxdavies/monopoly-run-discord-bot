@@ -17,16 +17,16 @@ load_dotenv()
 ############################
 strLoggingLocation = os.getenv("LOGGING_LOCATION")
 
-## Default to working directory if strLoggingLocation is empty ##
+# Default to working directory if strLoggingLocation is empty #
 if not strLoggingLocation:
     print('WARN Logging to application directory as LOGGING_LOCATION is not specified!')
     strLoggingLocation = os.getcwd() + '/Monopoly-Run-bot.log'
 else:
-    ### Check Directory exits ###
+    # Check Directory exits #
     if os.path.isdir(strLoggingLocation) is True:
         strLoggingLocation = strLoggingLocation + 'Monopoly-Run-bot.log'
 
-    ### Create Directory is not exits ###
+    # Create Directory is not exits #
     else:
         try:
             os.mkdir(strLoggingLocation)
@@ -42,16 +42,19 @@ else:
 # Setup Logging #
 #################
 try:
-    logging.basicConfig(filename=strLoggingLocation,
-    level = getattr(logging, os.getenv('LOG_LEVEL').upper()),
-    format="%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s ", datefmt='%d-%b-%y %H:%M:%S')
+    logging.basicConfig(
+        filename=strLoggingLocation,
+        level=getattr(logging, os.getenv('LOG_LEVEL').upper()),
+        format="%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s ",
+        datefmt='%d-%b-%y %H:%M:%S'
+    )
     logger = logging.getLogger(__name__)
     logging.info('Log File Created')
 
 except PermissionError:
     print(f'CRITICAL Please check {getpass.getuser()} has read/write access to {strLoggingLocation}')
     sys.exit(1)
-    
+
 except Exception as e:
     print(f'CRITICAL Unknown error when setting up Logging: {e}')
     sys.exit(1)

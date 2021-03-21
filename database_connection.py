@@ -27,7 +27,7 @@ try:
     dbconnection.autocommit = True
     dbconnection.auto_reconnect = True
     dbcursor = dbconnection.cursor()
-    
+
 except Exception as e:
     logger.critical(f'CRITICAL Unable to connect to Database: {e}')
     sys.exit(1)
