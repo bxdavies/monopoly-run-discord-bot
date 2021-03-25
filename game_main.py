@@ -37,7 +37,6 @@ class claGame(commands.Cog):
     def funToLower(strString):
         strNewString = re.sub("\s+", '', strString)
         strNewString = strNewString.lower()
-        print(strNewString)
         return strNewString
 
     #############
@@ -215,8 +214,6 @@ class claGame(commands.Cog):
         # Check if a set of properties is owned by one team #
         lisPropertiesToSelect = [i for i in self.lisProperties if i.startswith(re.sub('[0-9]+', '', strProperty))]
         intNumberofPropertiesToSelect = len(lisPropertiesToSelect)
-        print(lisPropertiesToSelect)
-        print(intNumberofPropertiesToSelect)
         if intNumberofPropertiesToSelect == 2:
             dbcursor.execute(f"SELECT id FROM tbl_{strGuildID} WHERE {lisPropertiesToSelect[0]}_owner = 'Y' and {lisPropertiesToSelect[1]}_owner = 'Y'")
             lisPropertiesInSet = dbcursor.fetchall()
