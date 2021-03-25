@@ -158,7 +158,15 @@ class claAdministration(commands.Cog):
         darkblue1_owner set('Y','N') NOT NULL DEFAULT 'N',
         darkblue1_visited set('Y','N') NOT NULL DEFAULT 'N',
         darkblue2_owner set('Y','N') NOT NULL DEFAULT 'N',
-        darkblue2_visited set('Y','N') NOT NULL DEFAULT 'N'
+        darkblue2_visited set('Y','N') NOT NULL DEFAULT 'N',
+        station1_owner set('Y','N') NOT NULL DEFAULT 'N',
+        station1_visited set('Y','N') NOT NULL DEFAULT 'N',
+        station2_owner set('Y','N') NOT NULL DEFAULT 'N',
+        station2_visited set('Y','N') NOT NULL DEFAULT 'N',
+        station3_owner set('Y','N') NOT NULL DEFAULT 'N',
+        station3_visited set('Y','N') NOT NULL DEFAULT 'N',
+        station4_owner set('Y','N') NOT NULL DEFAULT 'N',
+        station4_visited set('Y','N') NOT NULL DEFAULT 'N'
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""")
 
         # Create records in guilds table  #
@@ -177,7 +185,6 @@ class claAdministration(commands.Cog):
 
     @commands.command()
     @commands.has_guild_permissions(administrator=True)
-    @commands.has_role('Monopoly Run Administrator')
     async def remove(self, ctx, blnConfirm: bool):
 
         # Check if blnConfirm is false #
@@ -224,7 +231,7 @@ class claAdministration(commands.Cog):
     # Add Team Command #
     ####################
     @commands.command()
-    @commands.has_role('Monopoly Run Administrator')
+    @commands.has_guild_permissions(administrator=True)
     async def add(self, ctx):
 
         # Declare some key variables #
@@ -262,6 +269,17 @@ class claAdministration(commands.Cog):
         await chaChannel.set_permissions(roleNewTeam, send_messages=False, read_messages=True, view_channel=True)
         await chaChannel.set_permissions(roleMonopolyRunAdministrator, send_messages=True, read_messages=True, view_channel=True)
 
+        # Set permissions on announcements, leaderboard, properties and help channel #
+        chaAnnouncements = utils.get(ctx.guild.channels, name='announcements', category=catMonopolyRun)
+        chaLeaderBoard = utils.get(ctx.guild.channels, name='leaderboard', category=catMonopolyRun)
+        chaProperties = utils.get(ctx.guild.channels, name='properties', category=catMonopolyRun)
+        chaHelp = utils.get(ctx.guild.channels, name='help', category=catMonopolyRun)
+
+        await chaAnnouncements.set_permissions(roleNewTeam, send_messages=False, read_messages=True, view_channel=True)
+        await chaLeaderBoard.set_permissions(roleNewTeam, send_messages=False, read_messages=True, view_channel=True)
+        await chaProperties.set_permissions(roleNewTeam, send_messages=False, read_messages=True, view_channel=True)
+        await chaHelp.set_permissions(roleNewTeam, send_messages=False, read_messages=True, view_channel=True)
+        
         # Add team record to guilds table #
         dbcursor.execute(f"INSERT INTO tbl_{strGuildID} (id, money, current_location) VALUES (?, ?, ?)", (strNewTeamName, 1500, ''))
 
@@ -342,7 +360,7 @@ class claAdministration(commands.Cog):
         for strTeam in lisTeams:
             rolTeam = utils.get(ctx.guild.roles, name=f'{strTeam}')
             chaTeam = utils.get(ctx.guild.channels, name=f'{strTeam}')
-            await chaTeam.set_permissions(rolTeam, send_messages=False)
+            await chaTeam.set_permissions(rolTeam, send_messages=False, view_channel=True)
 
         # Get Announcement Channel and send a message #
         chaAnnouncementChannel = utils.get(ctx.guild.channels, name='announcements', category_id=catMonopolyRun.id)
@@ -396,6 +414,10 @@ class claAdministration(commands.Cog):
             title='Dark Blue Properties',
             color=Colour.from_rgb(0, 0, 255)
         )
+        emStations = embeds.Embed(
+            title='Train Stations',
+            color=Colour.from_rgb(255, 255, 255)
+        )
 
         # Get id, value and location from database and add to the relevant embeds #
         dbcursor.execute(f"SELECT id, value, location FROM tbl_{strQuestions}")
@@ -428,6 +450,8 @@ class claAdministration(commands.Cog):
                 emGreenProperties.add_field(name=item[2], value=f'ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}')
             elif re.sub('[0-9]+', '', item[0]) == 'darkblue':
                 emDarkBlueProperties.add_field(name=item[2], value=f'ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}')
+            elif re.sub('[0-9]+', '', item[0]) == 'station':
+                emStations.add_field(name=item[2], value=f'ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}')
 
         # Get the properties channel #
         catMonopolyRun = utils.get(ctx.guild.categories, name='Monopoly Run')
@@ -445,10 +469,11 @@ class claAdministration(commands.Cog):
         await chaProperties.send(embed=emYellowProperties)
         await chaProperties.send(embed=emGreenProperties)
         await chaProperties.send(embed=emDarkBlueProperties)
+        await chaProperties.send(embed=emStations)
 
-    ############
+    #######################
     # Update Leader Board #
-    ############
+    #######################
     @tasks.loop(minutes=2.1, count=None)
     async def UpdateLeaderBoard(self, ctx):
 

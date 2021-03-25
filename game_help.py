@@ -30,13 +30,13 @@ class claHelp(commands.Cog):
 
     # Return users team role #
     async def funTeamRole(member):
-        lismyRoles = [r.name for r in member.roles]
-        lismyRoles.reverse()
+        lisUserRoles = [r.name for r in member.roles]
+        lisUserRoles.reverse()
         r = re.compile("team.*")
-        if not list(filter(r.match, lismyRoles)):
+        if not list(filter(r.match, lisUserRoles)):
             return None
 
-        return utils.get(member.roles, name=next(filter(r.match, lismyRoles)))
+        return utils.get(member.roles, name=next(filter(r.match, lisUserRoles)))
 
     ################
     # Help Command #
@@ -51,11 +51,11 @@ class claHelp(commands.Cog):
             color=Colour.orange()
         )
         emHelp.add_field(name='⠀', value='⠀', inline=False)
-        emHelp.add_field(name='Go To', value="mr goto")
-        emHelp.add_field(name='Answer', value="mr answ")
+        emHelp.add_field(name='Go To', value='mr goto <property id>')
+        emHelp.add_field(name='Answer', value='mr answ <your answer>')
         emHelp.add_field(name='⠀', value='⠀', inline=False)
-        emHelp.add_field(name='Money', value="mr money")
-        emHelp.add_field(name='Owner', value="mr owner")
+        emHelp.add_field(name='Money', value='mr money')
+        emHelp.add_field(name='Owner', value='mr owner <property id>')
         await ctx.send(embed=emHelp)
 
     @help.command()
@@ -151,7 +151,7 @@ class claHelp(commands.Cog):
             # Handle errors #
             try:
                 if roleTeam is None:
-                    raise commands.RoleNotFound("team?")
+                    raise commands.RoleNotFound('team?')
 
             except commands.RoleNotFound:
                 await member.send(':no_entry: You must have a team role! For example role: team1')

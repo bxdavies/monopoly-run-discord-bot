@@ -31,20 +31,26 @@ bot.add_cog(claHelp(bot))
 bot.add_cog(claAdministration(bot))
 bot.add_cog(claGame(bot))
 
+##########
+# Events #
+##########
 
+# On ready #
 @bot.event
 async def on_ready():
     logging.info('Reloading / Starting the bot!')
 
 
+# Server join #
 @bot.event
 async def on_guild_join(guild):
     for channel in guild.text_channels:
         if channel.permissions_for(guild.me).send_messages:
-            await channel.send('I will send this message when I join a server')
+            await channel.send('Ready to plan Monopoly Run? Please read the Instructions here first: https://github.com/bxdavies/monopoly-run-discord-bot')
         break
 
 
+# Command Error #
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):

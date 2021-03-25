@@ -27,7 +27,7 @@ class claGame(commands.Cog):
         self.funTeamRole = claGame.funTeamRole
 
         # Define some lists to use later #
-        self.lisProperties = ['brown1', 'brown2', 'lightblue1', 'lightblue2', 'lightblue3', 'pink1', 'pink2', 'pink3', 'orange1', 'orange2', 'orange3', 'red1', 'red2', 'red3', 'yellow1', 'yellow2', 'yellow3', 'green1', 'green2', 'green3', 'darkblue1', 'darkblue2']
+        self.lisProperties = ['brown1', 'brown2', 'lightblue1', 'lightblue2', 'lightblue3', 'pink1', 'pink2', 'pink3', 'orange1', 'orange2', 'orange3', 'red1', 'red2', 'red3', 'yellow1', 'yellow2', 'yellow3', 'green1', 'green2', 'green3', 'darkblue1', 'darkblue2', 'station1', 'station2', 'station3', 'station4']
 
     ##############
     # Converters #
@@ -35,7 +35,10 @@ class claGame(commands.Cog):
 
     # Convert to lowercase #
     def funToLower(strString):
-        return strString.lower()
+        strNewString = re.sub("\s+", '', strString)
+        strNewString = strNewString.lower()
+        print(strNewString)
+        return strNewString
 
     #############
     # Functions #
@@ -43,13 +46,13 @@ class claGame(commands.Cog):
 
     # Return users team role #
     def funTeamRole(ctx):
-        lismyRoles = [r.name for r in ctx.author.roles]
-        lismyRoles.reverse()
+        lisUserRoles = [r.name for r in ctx.author.roles]
+        lisUserRoles.reverse()
         r = re.compile("team.*")
-        if not list(filter(r.match, lismyRoles)):
+        if not list(filter(r.match, lisUserRoles)):
             raise commands.MissingRole("team?")
 
-        return utils.get(ctx.author.roles, name=next(filter(r.match, lismyRoles)))
+        return utils.get(ctx.author.roles, name=next(filter(r.match, lisUserRoles)))
 
     ##################
     # Command Checks #
@@ -95,12 +98,22 @@ class claGame(commands.Cog):
 
     @commands.command()
     @funRoleChannelCheck()
-    async def goto(self, ctx, strProperty: funToLower):
+    async def goto(self, ctx, *,strProperty: funToLower):
 
         # Declare some key variables #
         strGuildID = str(ctx.guild.id)
         strTeamName = str(self.funTeamRole(ctx))
 
+        # Check if property exists but try and guess #
+        if strProperty not in self.lisProperties:
+            for strValidProperty in self.lisProperties:
+                intPartialRatio = fuzz.partial_ratio(strValidProperty, strProperty)
+                intTokenSetRatio = fuzz.token_set_ratio(strValidProperty, strProperty)
+                if intTokenSetRatio >= 80 or intTokenSetRatio >= 80:
+                    await ctx.send(f':tophat: Could not find property however I have guessed you want: {strValidProperty}')
+                    strProperty = strValidProperty
+                    break
+        
         # Check if property exists #
         if strProperty not in self.lisProperties:
             raise MonopolyRunError.InvalidPropertyName(strProperty)
@@ -180,6 +193,12 @@ class claGame(commands.Cog):
             tupOwner = lisOwner[0]
             strOwner = tupOwner[0]
 
+            # Get how much money the owner has #
+            dbcursor.execute(f"SELECT money FROM tbl_{strGuildID} WHERE id = ?", (strOwner, ))
+            lisOwnersMoney = dbcursor.fetchall()
+            tupOwnersMoney = lisOwnersMoney[0]
+            intOwnersMoney = tupOwnersMoney[0]
+
         # Get which set of Questions the guild is using #
         dbcursor.execute("SELECT questions FROM tbl_guilds WHERE id = ?", (strGuildID, ))
         lisQuestions = dbcursor.fetchall()
@@ -196,6 +215,8 @@ class claGame(commands.Cog):
         # Check if a set of properties is owned by one team #
         lisPropertiesToSelect = [i for i in self.lisProperties if i.startswith(re.sub('[0-9]+', '', strProperty))]
         intNumberofPropertiesToSelect = len(lisPropertiesToSelect)
+        print(lisPropertiesToSelect)
+        print(intNumberofPropertiesToSelect)
         if intNumberofPropertiesToSelect == 2:
             dbcursor.execute(f"SELECT id FROM tbl_{strGuildID} WHERE {lisPropertiesToSelect[0]}_owner = 'Y' and {lisPropertiesToSelect[1]}_owner = 'Y'")
             lisPropertiesInSet = dbcursor.fetchall()
@@ -203,6 +224,7 @@ class claGame(commands.Cog):
                 blnDoubleRent = False
             else:
                 blnDoubleRent = True
+
         elif intNumberofPropertiesToSelect == 3:
             dbcursor.execute(f"SELECT id FROM tbl_{strGuildID} WHERE {lisPropertiesToSelect[0]}_owner = 'Y' and {lisPropertiesToSelect[1]}_owner = 'Y' and {lisPropertiesToSelect[2]}_owner = 'Y'")
             lisPropertiesInSet = dbcursor.fetchall()
@@ -210,6 +232,15 @@ class claGame(commands.Cog):
                 blnDoubleRent = False
             else:
                 blnDoubleRent = True
+
+        elif intNumberofPropertiesToSelect == 4:
+            dbcursor.execute(f"SELECT id FROM tbl_{strGuildID} WHERE {lisPropertiesToSelect[0]}_owner = 'Y' and {lisPropertiesToSelect[1]}_owner = 'Y' and {lisPropertiesToSelect[2]}_owner = 'Y' and {lisPropertiesToSelect[3]}_owner = 'Y'", ())
+            lisPropertiesInSet = dbcursor.fetchall()
+            if not lisPropertiesInSet:
+                blnDoubleRent = False
+            else:
+                blnDoubleRent = True
+  
         else:
             blnDoubleRent = False
 
@@ -251,7 +282,10 @@ class claGame(commands.Cog):
 
             await ctx.send(f':white_check_mark: You now own {strProperty}!')
 
-        # Answer is correct AND the property is owned AND the team can afford rent #
+            # Set current_location to empty #
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET current_location = ? WHERE id = ?", ("", strTeamName))
+
+        # Answer is correct AND the property is owned #
         elif blnAnswerCorrect is True and strOwner is not None and blnDoubleRent is False:
 
             # Update property visited in database #
@@ -264,11 +298,14 @@ class claGame(commands.Cog):
             # Update owners money #
             chaOwner = utils.get(ctx.guild.channels, name=strOwner)
             await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue} on {strProperty}!')
-            intUpdatedMoney = intTeamsMoney + intValue
+            intUpdatedMoney = intOwnersMoney + intValue
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strOwner))
             await ctx.send(f':white_check_mark: However since: {strOwner} already owns that property you paid: £{intValue} in rent!')
 
-        # Answer is correct AND the property is owned  AND double rent AND the team can afford rent #
+            # Set current_location to empty #
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET current_location = ? WHERE id = ?", ("", strTeamName))
+
+        # Answer is correct AND the property is owned  AND double rent #
         elif blnAnswerCorrect is True and strOwner is not None and blnDoubleRent is True:
 
             # Update property visited in database #
@@ -281,9 +318,12 @@ class claGame(commands.Cog):
             # Update owners money #
             chaOwner = utils.get(ctx.guild.channels, name=strOwner)
             await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue * 2} on {strProperty}!')
-            intUpdatedMoney = intTeamsMoney + (intValue * 2)
+            intUpdatedMoney = intOwnersMoney + (intValue * 2)
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strOwner))
             await ctx.send(f':white_check_mark: However since: {strOwner} already owns that property and the other properties in the same group you paid: £{intValue*2} in rent!')
+
+            # Set current_location to empty #
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET current_location = ? WHERE id = ?", ("", strTeamName))
 
         # Answer is incorrect AND the property is NOT owned #
         elif blnAnswerCorrect is False and strOwner is None and blnDoubleRent is False:
@@ -297,7 +337,7 @@ class claGame(commands.Cog):
             # Update owners money #
             chaOwner = utils.get(ctx.guild.channels, name=strOwner)
             await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue} on {strProperty}, even though they got the answer incorrect!')
-            intUpdatedMoney = intTeamsMoney + intValue
+            intUpdatedMoney = intOwnersMoney + intValue
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strOwner))
 
         # Answer is incorrect AND the property is owned AND double rent  #
@@ -308,11 +348,14 @@ class claGame(commands.Cog):
             # Update owners money #
             chaOwner = utils.get(ctx.guild.channels, name=strOwner)
             await chaOwner.send(f':dollar: {strTeamName} just paid £{intValue * 2} on {strProperty}, even though they got the answer incorrect!')
-            intUpdatedMoney = intTeamsMoney + (intValue * 2)
+            intUpdatedMoney = intOwnersMoney + (intValue * 2)
             dbcursor.execute(f"UPDATE tbl_{strGuildID} SET money = ? WHERE id = ?", (intUpdatedMoney, strOwner))
 
         # Error #
         else:
+
+            # Set current_location to empty #
+            dbcursor.execute(f"UPDATE tbl_{strGuildID} SET current_location = ? WHERE id = ?", ("", strTeamName))
             logging.error(f'Unexpected error: Answer, Correct Answer, Answer Correct, Owner, Double Rent, Afford is not valid! {strAnswer, strCorrectAnswer, blnAnswerCorrect, strOwner, blnDoubleRent, }')
             await ctx.send(f':satellite: An unexpected error occurred! ```The error is: Answer, Correct Answer, Answer Correct, Owner, Double Rent, Afford is not valid! {strAnswer, strCorrectAnswer, blnAnswerCorrect, strOwner, blnDoubleRent, }``` ')
 
@@ -341,14 +384,25 @@ class claGame(commands.Cog):
     ##########################
     @commands.command()
     @funRoleChannelCheck()
-    async def owner(self, ctx, strProperty: funToLower):
+    async def owner(self, ctx, *, strProperty: funToLower):
 
         # Declare some key variables #
         strGuildID = str(ctx.guild.id)
 
+        # Check if property exists but try and guess #
+        if strProperty not in self.lisProperties:
+            for strValidProperty in self.lisProperties:
+                intPartialRatio = fuzz.partial_ratio(strValidProperty, strProperty)
+                intTokenSetRatio = fuzz.token_set_ratio(strValidProperty, strProperty)
+                if intTokenSetRatio >= 80 or intTokenSetRatio >= 80:
+                    await ctx.send(f':tophat: Could not find property however I have guessed you want: {strValidProperty}')
+                    strProperty = strValidProperty
+                    break
+        
         # Check if property exists #
         if strProperty not in self.lisProperties:
             raise MonopolyRunError.InvalidPropertyName(strProperty)
+
 
         # Check if a team owns the property #
         dbcursor.execute(f"SELECT id FROM tbl_{strGuildID} WHERE {strProperty}_owner = 'Y'")
