@@ -55,10 +55,10 @@ class claAdministration(commands.Cog):
             await ctx.send(':no_entry: That question set was not found!')
             return None
 
-        # Check number of teams is greater than 2 and less than 100 #
+        # Check number of teams is greater than 2 and less than 46 #
         if intNumberOfTeams < 2:
             raise MonopolyRunError.NotEnoughTeams()
-        elif intNumberOfTeams >= 100:
+        elif intNumberOfTeams >= 47:
             raise MonopolyRunError.TooManyTeams()
 
         # Declare lisTeams based on user input #
@@ -171,7 +171,7 @@ class claAdministration(commands.Cog):
 
         # Create records in guilds table  #
         for strTeam in lisTeams:
-            dbcursor.execute(f"INSERT INTO tbl_{strGuildID} (id, money, current_location) VALUES (?, ?, ?)", (strTeam, 1500, ''))
+            dbcursor.execute(f"INSERT INTO tbl_{strGuildID} (id, money, current_location) VALUES (?, ?, ?)", (strTeam, 0, ''))
 
         # Create a record in tbl_guild #
         dbcursor.execute("INSERT INTO tbl_guilds (id, name, questions, teams) VALUES (?, ?, ?, ?)", (intGuildID, strGuildName, strQuestionSet, intNumberOfTeams))
@@ -248,7 +248,7 @@ class claAdministration(commands.Cog):
         intNumberOfTeams = tupNumberOfTeams[0]
 
         # Handle max number of teams #
-        if intNumberOfTeams == 99:
+        if intNumberOfTeams == 46:
             raise MonopolyRunError.TooManyTeams()
 
         # Get the Monopoly Run Category #
@@ -281,7 +281,7 @@ class claAdministration(commands.Cog):
         await chaHelp.set_permissions(roleNewTeam, send_messages=False, read_messages=True, view_channel=True)
         
         # Add team record to guilds table #
-        dbcursor.execute(f"INSERT INTO tbl_{strGuildID} (id, money, current_location) VALUES (?, ?, ?)", (strNewTeamName, 1500, ''))
+        dbcursor.execute(f"INSERT INTO tbl_{strGuildID} (id, money, current_location) VALUES (?, ?, ?)", (strNewTeamName, 0, ''))
 
         # Update number of teams in guild table #
         dbcursor.execute("UPDATE tbl_guilds SET teams = ? WHERE id = ?", (intNumberOfTeams + 1, strGuildID))
@@ -538,7 +538,7 @@ class claAdministration(commands.Cog):
             if ctx.command.name == 'add':
                 await ctx.send(':no_entry: You can not create any teams as you will be over the maximum allowed amount of teams!')
             else:
-                await ctx.send(':no_entry: Maximum amount of teams is 99!')
+                await ctx.send(':no_entry: Maximum amount of teams is 46!')
 
         # Not enough teams #
         elif isinstance(error, MonopolyRunError.NotEnoughTeams):

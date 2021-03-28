@@ -428,7 +428,8 @@ class claGame(commands.Cog):
         elif isinstance(error, commands.MissingRequiredArgument):
             if ctx.command.name == 'answer':
                 await ctx.send(f':no_entry: You need to specify a answer! ```mr {ctx.command.name} hello world```')
-            await ctx.send(f':no_entry: You need to specify the property! e.g. ```mr {ctx.command.name} brown1```')
+            else:
+                await ctx.send(f':no_entry: You need to specify the property! e.g. ```mr {ctx.command.name} brown1```')
 
         # No Private Message #
         elif isinstance(error, commands.NoPrivateMessage):
