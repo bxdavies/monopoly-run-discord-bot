@@ -137,6 +137,14 @@ class claAdministration(commands.Cog):
         orange2_visited set('Y','N') NOT NULL DEFAULT 'N',
         orange3_owner set('Y','N') NOT NULL DEFAULT 'N',
         orange3_visited set('Y','N') NOT NULL DEFAULT 'N',
+        black1_owner set('Y','N') NOT NULL DEFAULT 'N',
+        black1_visited set('Y','N') NOT NULL DEFAULT 'N',
+        black2_owner set('Y','N') NOT NULL DEFAULT 'N',
+        black2_visited set('Y','N') NOT NULL DEFAULT 'N',
+        black3_owner set('Y','N') NOT NULL DEFAULT 'N',
+        black3_visited set('Y','N') NOT NULL DEFAULT 'N',
+        black4_owner set('Y','N') NOT NULL DEFAULT 'N',
+        black4_visited set('Y','N') NOT NULL DEFAULT 'N',
         red1_owner set('Y','N') NOT NULL DEFAULT 'N',
         red1_visited set('Y','N') NOT NULL DEFAULT 'N',
         red2_owner set('Y','N') NOT NULL DEFAULT 'N',
@@ -158,15 +166,7 @@ class claAdministration(commands.Cog):
         darkblue1_owner set('Y','N') NOT NULL DEFAULT 'N',
         darkblue1_visited set('Y','N') NOT NULL DEFAULT 'N',
         darkblue2_owner set('Y','N') NOT NULL DEFAULT 'N',
-        darkblue2_visited set('Y','N') NOT NULL DEFAULT 'N',
-        station1_owner set('Y','N') NOT NULL DEFAULT 'N',
-        station1_visited set('Y','N') NOT NULL DEFAULT 'N',
-        station2_owner set('Y','N') NOT NULL DEFAULT 'N',
-        station2_visited set('Y','N') NOT NULL DEFAULT 'N',
-        station3_owner set('Y','N') NOT NULL DEFAULT 'N',
-        station3_visited set('Y','N') NOT NULL DEFAULT 'N',
-        station4_owner set('Y','N') NOT NULL DEFAULT 'N',
-        station4_visited set('Y','N') NOT NULL DEFAULT 'N'
+        darkblue2_visited set('Y','N') NOT NULL DEFAULT 'N'
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""")
 
         # Create records in guilds table  #
