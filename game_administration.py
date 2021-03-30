@@ -414,7 +414,7 @@ class claAdministration(commands.Cog):
             title='Dark Blue Properties',
             color=Colour.from_rgb(0, 0, 255)
         )
-        emStations = embeds.Embed(
+        emBlackProperties = embeds.Embed(
             title='Train Stations',
             color=Colour.from_rgb(255, 255, 255)
         )
@@ -450,8 +450,8 @@ class claAdministration(commands.Cog):
                 emGreenProperties.add_field(name=item[2], value=f'ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}')
             elif re.sub('[0-9]+', '', item[0]) == 'darkblue':
                 emDarkBlueProperties.add_field(name=item[2], value=f'ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}')
-            elif re.sub('[0-9]+', '', item[0]) == 'station':
-                emStations.add_field(name=item[2], value=f'ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}')
+            elif re.sub('[0-9]+', '', item[0]) == 'black':
+                 emBlackProperties.add_field(name=item[2], value=f'ID: {item[0]} \n Value: {item[1]} \n Owner: {strOwner}')
 
         # Get the properties channel #
         catMonopolyRun = utils.get(ctx.guild.categories, name='Monopoly Run')
@@ -465,11 +465,12 @@ class claAdministration(commands.Cog):
         await chaProperties.send(embed=emLightBlueProperties)
         await chaProperties.send(embed=emPinkProperties)
         await chaProperties.send(embed=emOrangeProperties)
+        await chaProperties.send(embed=emBlackProperties)
         await chaProperties.send(embed=emRedProperties)
         await chaProperties.send(embed=emYellowProperties)
         await chaProperties.send(embed=emGreenProperties)
         await chaProperties.send(embed=emDarkBlueProperties)
-        await chaProperties.send(embed=emStations)
+       
 
     #######################
     # Update Leader Board #
