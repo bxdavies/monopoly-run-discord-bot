@@ -27,7 +27,7 @@ class claGame(commands.Cog):
         self.funTeamRole = claGame.funTeamRole
 
         # Define some lists to use later #
-        self.lisProperties = ['brown1', 'brown2', 'lightblue1', 'lightblue2', 'lightblue3', 'pink1', 'pink2', 'pink3', 'orange1', 'orange2', 'orange3', 'red1', 'red2', 'red3', 'yellow1', 'yellow2', 'yellow3', 'green1', 'green2', 'green3', 'darkblue1', 'darkblue2', 'station1', 'station2', 'station3', 'station4']
+        self.lisProperties = ['brown1', 'brown2', 'lightblue1', 'lightblue2', 'lightblue3', 'pink1', 'pink2', 'pink3', 'orange1', 'orange2', 'orange3', 'red1', 'red2', 'red3', 'yellow1', 'yellow2', 'yellow3', 'green1', 'green2', 'green3', 'darkblue1', 'darkblue2', 'black1', 'black2', 'black3', 'black4']
 
     ##############
     # Converters #
